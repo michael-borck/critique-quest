@@ -32,7 +32,7 @@ ScenarioForge empowers educators and learners to create high-quality, AI-generat
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/scenario-forge.git
+git clone https://github.com/michael-borck/scenario-forge.git
 cd scenario-forge
 
 # Install dependencies
@@ -178,8 +178,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Documentation**: Check the `/docs` folder
-- **Issues**: [GitHub Issues](https://github.com/yourusername/scenario-forge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/scenario-forge/discussions)
+- **Issues**: [GitHub Issues](https://github.com/michael-borck/scenario-forge/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/michael-borck/scenario-forge/discussions)
 
 ---
 
