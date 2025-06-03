@@ -1,0 +1,79 @@
+export interface CaseStudy {
+  id?: number;
+  title: string;
+  domain: string;
+  complexity: 'Beginner' | 'Intermediate' | 'Advanced';
+  scenario_type: 'Problem-solving' | 'Decision-making' | 'Ethical Dilemma' | 'Strategic Planning';
+  content: string;
+  questions: string;
+  answers?: string;
+  created_date?: string;
+  modified_date?: string;
+  tags: string[];
+  is_favorite: boolean;
+  word_count: number;
+  usage_count: number;
+}
+
+export interface GenerationInput {
+  domain: string;
+  complexity: 'Beginner' | 'Intermediate' | 'Advanced';
+  scenario_type: 'Problem-solving' | 'Decision-making' | 'Ethical Dilemma' | 'Strategic Planning';
+  context_setting: string;
+  key_concepts: string;
+  length_preference: 'Short' | 'Medium' | 'Long';
+  custom_prompt: string;
+  include_elements: {
+    executive_summary: boolean;
+    background: boolean;
+    problem_statement: boolean;
+    supporting_data: boolean;
+    key_characters: boolean;
+    analysis_questions: boolean;
+    learning_objectives: boolean;
+    suggested_solutions: boolean;
+  };
+}
+
+export interface AIUsage {
+  id?: number;
+  provider: string;
+  model: string;
+  tokens_used: number;
+  cost_estimate: number;
+  timestamp?: string;
+  case_id?: number;
+}
+
+export interface PracticeSession {
+  id?: number;
+  case_id: number;
+  start_time?: string;
+  end_time?: string;
+  notes: string;
+}
+
+export interface UserPreferences {
+  theme: 'light' | 'dark';
+  default_ai_provider: string;
+  default_ai_model: string;
+  api_keys: Record<string, string>;
+  default_generation_settings: Partial<GenerationInput>;
+}
+
+export interface AIProvider {
+  name: string;
+  models: string[];
+  api_key_required: boolean;
+  cost_per_token: number;
+  endpoint?: string;
+  local?: boolean;
+}
+
+export interface OllamaModel {
+  name: string;
+  model: string;
+  modified_at: string;
+  size: number;
+  digest: string;
+}

@@ -1,0 +1,209 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  Typography,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Chip,
+  Divider,
+} from '@mui/material';
+import {
+  LibraryBooks,
+  Add,
+  PlayArrow,
+  Settings,
+  Star,
+  History,
+  Tag,
+} from '@mui/icons-material';
+import { useAppStore } from './store/appStore';
+import { GenerationView } from './components/GenerationView';
+import { LibraryView } from './components/LibraryView';
+import { PracticeView } from './components/PracticeView';
+import { SettingsView } from './components/SettingsView';
+
+const DRAWER_WIDTH = 240;
+
+type View = 'generation' | 'library' | 'practice' | 'settings';
+
+const App: React.FC = () => {
+  const [currentView, setCurrentView] = useState<View>('generation');
+  const { cases, aiStatus, loadPreferences } = useAppStore();
+
+  useEffect(() => {
+    // Load preferences on app startup
+    loadPreferences();
+  }, [loadPreferences]);
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'generation':
+        return <GenerationView />;
+      case 'library':
+        return <LibraryView />;
+      case 'practice':
+        return <PracticeView />;
+      case 'settings':
+        return <SettingsView />;
+      default:
+        return <GenerationView />;
+    }
+  };
+
+  const menuItems = [
+    {
+      id: 'generation' as View,
+      label: 'Generate',
+      icon: <Add />,
+    },
+    {
+      id: 'library' as View,
+      label: 'Library',
+      icon: <LibraryBooks />,
+    },
+    {
+      id: 'practice' as View,
+      label: 'Practice',
+      icon: <PlayArrow />,
+    },
+    {
+      id: 'settings' as View,
+      label: 'Settings',
+      icon: <Settings />,
+    },
+  ];
+
+  return (
+    <Box sx={{ display: 'flex', height: '100vh' }}>
+      {/* App Bar */}
+      <AppBar
+        position="fixed"
+        sx={{
+          width: `calc(100% - ${DRAWER_WIDTH}px)`,
+          ml: `${DRAWER_WIDTH}px`,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            ScenarioForge
+          </Typography>
+          <Chip
+            label={aiStatus === 'connected' ? 'AI: Connected' : 'AI: Offline'}
+            color={aiStatus === 'connected' ? 'success' : 'warning'}
+            size="small"
+            sx={{ color: 'white' }}
+          />
+        </Toolbar>
+      </AppBar>
+
+      {/* Sidebar */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ overflow: 'auto', p: 1 }}>
+          {/* Navigation */}
+          <List>
+            {menuItems.map((item) => (
+              <ListItem
+                key={item.id}
+                button
+                selected={currentView === item.id}
+                onClick={() => setCurrentView(item.id)}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.5,
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItem>
+            ))}
+          </List>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Quick Stats */}
+          <Box sx={{ px: 2 }}>
+            <Typography variant="caption" color="textSecondary">
+              Library
+            </Typography>
+            <List dense>
+              <ListItem>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <LibraryBooks fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={`${cases.length} Cases`}
+                  primaryTypographyProps={{ variant: 'body2' }}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <Star fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={`${cases.filter(c => c.is_favorite).length} Favorites`}
+                  primaryTypographyProps={{ variant: 'body2' }}
+                />
+              </ListItem>
+            </List>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Recent Tags */}
+          <Box sx={{ px: 2 }}>
+            <Typography variant="caption" color="textSecondary" sx={{ mb: 1, display: 'block' }}>
+              Recent Tags
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {Array.from(new Set(cases.flatMap(c => c.tags)))
+                .slice(0, 6)
+                .map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: 20 }}
+                  />
+                ))}
+            </Box>
+          </Box>
+        </Box>
+      </Drawer>
+
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          height: '100vh',
+          overflow: 'auto',
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ p: 3 }}>
+          {renderView()}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+export default App;

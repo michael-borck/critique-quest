@@ -1,0 +1,337 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Grid,
+  Chip,
+  Switch,
+  FormControlLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
+import { ExpandMore, AutoAwesome, Save } from '@mui/icons-material';
+import { useAppStore } from '../store/appStore';
+import type { GenerationInput } from '../../shared/types';
+
+export const GenerationView: React.FC = () => {
+  const { isGenerating, generateCase, saveCase, currentCase, preferences, loadPreferences } = useAppStore();
+
+  useEffect(() => {
+    // Ensure preferences are loaded
+    if (!preferences) {
+      loadPreferences();
+    }
+  }, [preferences, loadPreferences]);
+  const [input, setInput] = useState<GenerationInput>({
+    domain: 'Business',
+    complexity: 'Intermediate',
+    scenario_type: 'Problem-solving',
+    context_setting: '',
+    key_concepts: '',
+    length_preference: 'Medium',
+    custom_prompt: '',
+    include_elements: {
+      executive_summary: true,
+      background: true,
+      problem_statement: true,
+      supporting_data: false,
+      key_characters: true,
+      analysis_questions: true,
+      learning_objectives: false,
+      suggested_solutions: false,
+    },
+  });
+  const [error, setError] = useState<string>('');
+
+  const handleInputChange = (field: keyof GenerationInput, value: any) => {
+    setInput(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleElementToggle = (element: keyof typeof input.include_elements) => {
+    setInput(prev => ({
+      ...prev,
+      include_elements: {
+        ...prev.include_elements,
+        [element]: !prev.include_elements[element],
+      },
+    }));
+  };
+
+  const handleGenerate = async () => {
+    if (!input.context_setting.trim()) {
+      setError('Please provide a context setting for your case study.');
+      return;
+    }
+
+    setError('');
+    try {
+      const provider = preferences?.default_ai_provider || 'openai';
+      let model = preferences?.default_ai_model || 'gpt-4';
+      
+      // Use appropriate model for Ollama
+      if (provider === 'ollama') {
+        model = preferences?.default_ollama_model || 'llama2';
+      }
+      
+      await generateCase(input, provider, model);
+    } catch (err) {
+      setError('Failed to generate case study. Please check your AI configuration.');
+    }
+  };
+
+  const handleSave = async () => {
+    if (currentCase) {
+      try {
+        await saveCase(currentCase);
+      } catch (err) {
+        setError('Failed to save case study.');
+      }
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h4" gutterBottom>
+        Generate Case Study
+      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Typography variant="body1" color="textSecondary">
+          Create AI-powered case studies for educational purposes
+        </Typography>
+        {preferences?.default_ai_provider && (
+          <Chip 
+            label={`Using: ${preferences.default_ai_provider === 'ollama' ? 'Ollama (Local)' : preferences.default_ai_provider}`}
+            color={preferences.default_ai_provider === 'ollama' ? 'success' : 'primary'}
+            size="small"
+          />
+        )}
+      </Box>
+
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Basic Configuration
+            </Typography>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Domain</InputLabel>
+                  <Select
+                    value={input.domain}
+                    label="Domain"
+                    onChange={(e) => handleInputChange('domain', e.target.value)}
+                  >
+                    <MenuItem value="Business">Business</MenuItem>
+                    <MenuItem value="Technology">Technology</MenuItem>
+                    <MenuItem value="Healthcare">Healthcare</MenuItem>
+                    <MenuItem value="Science">Science</MenuItem>
+                    <MenuItem value="Social Sciences">Social Sciences</MenuItem>
+                    <MenuItem value="Education">Education</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Complexity</InputLabel>
+                  <Select
+                    value={input.complexity}
+                    label="Complexity"
+                    onChange={(e) => handleInputChange('complexity', e.target.value)}
+                  >
+                    <MenuItem value="Beginner">Beginner</MenuItem>
+                    <MenuItem value="Intermediate">Intermediate</MenuItem>
+                    <MenuItem value="Advanced">Advanced</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Scenario Type</InputLabel>
+                  <Select
+                    value={input.scenario_type}
+                    label="Scenario Type"
+                    onChange={(e) => handleInputChange('scenario_type', e.target.value)}
+                  >
+                    <MenuItem value="Problem-solving">Problem-solving</MenuItem>
+                    <MenuItem value="Decision-making">Decision-making</MenuItem>
+                    <MenuItem value="Ethical Dilemma">Ethical Dilemma</MenuItem>
+                    <MenuItem value="Strategic Planning">Strategic Planning</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Length</InputLabel>
+                  <Select
+                    value={input.length_preference}
+                    label="Length"
+                    onChange={(e) => handleInputChange('length_preference', e.target.value)}
+                  >
+                    <MenuItem value="Short">Short (500-800 words)</MenuItem>
+                    <MenuItem value="Medium">Medium (800-1500 words)</MenuItem>
+                    <MenuItem value="Long">Long (1500+ words)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Context Setting"
+                  multiline
+                  rows={3}
+                  value={input.context_setting}
+                  onChange={(e) => handleInputChange('context_setting', e.target.value)}
+                  placeholder="Describe the setting, industry, organization, or situation for your case study..."
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Key Concepts"
+                  value={input.key_concepts}
+                  onChange={(e) => handleInputChange('key_concepts', e.target.value)}
+                  placeholder="Specific theories, frameworks, or concepts to include..."
+                />
+              </Grid>
+            </Grid>
+
+            <Accordion sx={{ mt: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography>Content Elements</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={1}>
+                  {Object.entries(input.include_elements).map(([key, value]) => (
+                    <Grid item xs={12} sm={6} key={key}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={value}
+                            onChange={() => handleElementToggle(key as keyof typeof input.include_elements)}
+                          />
+                        }
+                        label={key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography>Custom Prompt</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={input.custom_prompt}
+                  onChange={(e) => handleInputChange('custom_prompt', e.target.value)}
+                  placeholder="Additional specific instructions for the AI..."
+                />
+              </AccordionDetails>
+            </Accordion>
+
+            {error && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+              <Button
+                variant="contained"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                startIcon={isGenerating ? <CircularProgress size={20} /> : <AutoAwesome />}
+                size="large"
+              >
+                {isGenerating ? 'Generating...' : 'Generate Case Study'}
+              </Button>
+
+              {currentCase && (
+                <Button
+                  variant="outlined"
+                  onClick={handleSave}
+                  startIcon={<Save />}
+                >
+                  Save
+                </Button>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, height: 'fit-content' }}>
+            <Typography variant="h6" gutterBottom>
+              Generated Content
+            </Typography>
+
+            {isGenerating ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : currentCase ? (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  {currentCase.title}
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Chip label={currentCase.domain} size="small" sx={{ mr: 1 }} />
+                  <Chip label={currentCase.complexity} size="small" sx={{ mr: 1 }} />
+                  <Chip label={currentCase.scenario_type} size="small" />
+                </Box>
+
+                <Typography variant="body2" sx={{ mb: 2, color: 'textSecondary' }}>
+                  {currentCase.word_count} words
+                </Typography>
+
+                <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                  <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
+                    {currentCase.content}
+                  </Typography>
+
+                  {currentCase.questions && (
+                    <>
+                      <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+                        Analysis Questions
+                      </Typography>
+                      <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
+                        {currentCase.questions}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
+              </Box>
+            ) : (
+              <Typography color="textSecondary">
+                Configure your case study parameters and click "Generate" to create content.
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};

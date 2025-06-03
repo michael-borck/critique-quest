@@ -1,0 +1,74 @@
+{
+  "name": "scenario-forge",
+  "version": "1.0.0",
+  "description": "AI-Powered Case Study Generator",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "node start-simple.js",
+    "dev-full": "node start.js",
+    "dev-old": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p src/main && npx electron dist/main.js",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p src/main",
+    "build:renderer": "vite build",
+    "dist": "electron-builder",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["education", "ai", "case-studies", "electron"],
+  "author": "ScenarioForge",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "@types/react": "^18.2.25",
+    "@types/react-dom": "^18.2.11",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "@vitejs/plugin-react": "^4.1.0",
+    "concurrently": "^8.2.2",
+    "electron": "^26.2.1",
+    "electron-builder": "^24.6.4",
+    "eslint": "^8.50.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.11",
+    "@mui/material": "^5.14.11",
+    "axios": "^1.5.0",
+    "node-json-db": "^2.3.0",
+    "electron-store": "^8.1.0",
+    "html-to-text": "^9.0.5",
+    "jspdf": "^2.5.1",
+    "mammoth": "^1.6.0",
+    "openai": "^4.11.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.1"
+  },
+  "build": {
+    "appId": "com.scenarioforge.app",
+    "productName": "ScenarioForge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
