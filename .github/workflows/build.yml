@@ -1,0 +1,125 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript and React
+        run: npm run build
+
+      - name: Build Electron app (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run dist -- --win --publish never
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+
+      - name: Build Electron app (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run dist -- --mac --publish never
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+
+      - name: Build Electron app (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run dist -- --linux --publish never
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-distributables
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.yml
+            release/*.yaml
+            release/*latest*.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "ScenarioForge ${{ github.ref_name }}" \
+            --notes "## ScenarioForge Release ${{ github.ref_name }}
+            
+            ### Downloads
+            
+            #### Windows
+            - \`ScenarioForge-Setup-*.exe\` - Windows installer
+            
+            #### macOS
+            - \`ScenarioForge-*.dmg\` - macOS installer
+            
+            #### Linux
+            - \`ScenarioForge-*.AppImage\` - Universal Linux app
+            
+            ### Installation Instructions
+            
+            **Windows:** Download and run the .exe installer
+            
+            **macOS:** Download the .dmg file, open it, and drag ScenarioForge to Applications
+            
+            **Linux:** Download the AppImage, make executable with \`chmod +x\` and run
+            
+            ### Features
+            - Generate AI-powered educational case studies
+            - Support for OpenAI, Google Gemini, Anthropic Claude, and Ollama
+            - Local content library with search and filtering
+            - Interactive practice mode with self-assessment
+            - Export to PDF, Word, HTML, and plain text
+            - Privacy-first option with local AI models
+            - Offline-first architecture"
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload all artifacts to the release
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" \) -exec gh release upload "${{ github.ref_name }}" {} \;
