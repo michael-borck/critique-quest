@@ -1,0 +1,43 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# TypeScript/JavaScript
+*.ts text
+*.tsx text
+*.js text
+*.jsx text
+*.json text
+
+# Web files
+*.html text
+*.css text
+*.scss text
+*.sass text
+
+# Documentation
+*.md text
+*.txt text
+
+# Configuration
+.gitignore text
+.gitattributes text
+.eslintrc* text
+*.yml text
+*.yaml text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# Vendor files
+node_modules/* linguist-vendored
+dist/* linguist-generated
+release/* linguist-generated
+
+# Language statistics
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
