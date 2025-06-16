@@ -64,6 +64,7 @@ export const LibraryView: React.FC = () => {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     loadCases();
@@ -155,6 +156,94 @@ export const LibraryView: React.FC = () => {
     setImportTab(0);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const jsonFiles = files.filter(file => 
+      file.type === 'application/json' || 
+      file.name.toLowerCase().endsWith('.json')
+    );
+
+    if (jsonFiles.length === 0) {
+      setImportError('Please drop JSON files only');
+      setTimeout(() => setImportError(null), 3000);
+      return;
+    }
+
+    // For now, process only the first JSON file
+    const file = jsonFiles[0];
+    
+    try {
+      setImportLoading(true);
+      setImportError(null);
+      setImportSuccess(null);
+
+      const fileContent = await file.text();
+      
+      // Try to parse the JSON
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(fileContent);
+      } catch {
+        throw new Error('Invalid JSON format');
+      }
+
+      // Validate the case study structure
+      if (!parsedContent.title || !parsedContent.content) {
+        throw new Error('Invalid case study format: missing required fields (title, content)');
+      }
+
+      // Clean and validate the imported data (similar to URL import)
+      const caseStudy: CaseStudy = {
+        title: String(parsedContent.title),
+        domain: String(parsedContent.domain || 'General'),
+        complexity: ['Beginner', 'Intermediate', 'Advanced'].includes(parsedContent.complexity) 
+          ? parsedContent.complexity 
+          : 'Intermediate',
+        scenario_type: ['Problem-solving', 'Decision-making', 'Ethical Dilemma', 'Strategic Planning'].includes(parsedContent.scenario_type)
+          ? parsedContent.scenario_type
+          : 'Problem-solving',
+        content: String(parsedContent.content),
+        questions: String(parsedContent.questions || ''),
+        answers: parsedContent.answers ? String(parsedContent.answers) : undefined,
+        tags: Array.isArray(parsedContent.tags) ? parsedContent.tags.map(String) : ['imported', 'file'],
+        is_favorite: Boolean(parsedContent.is_favorite || false),
+        word_count: String(parsedContent.content).split(' ').length,
+        usage_count: 0,
+        created_date: new Date().toISOString(),
+        modified_date: new Date().toISOString(),
+      };
+
+      await saveCase(caseStudy);
+      
+      setImportSuccess(`Successfully imported case: "${caseStudy.title}" from file "${file.name}"`);
+      loadCases(); // Refresh the cases list
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setImportSuccess(null), 3000);
+    } catch (error) {
+      setImportError(`Failed to import file "${file.name}": ${error}`);
+      setTimeout(() => setImportError(null), 5000);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const filteredCases = cases.filter((caseStudy) => {
     if (searchQuery && !caseStudy.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !caseStudy.content.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -180,7 +269,29 @@ export const LibraryView: React.FC = () => {
   const complexities = Array.from(new Set(cases.map(c => c.complexity)));
 
   return (
-    <Box>
+    <Box
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      sx={{
+        position: 'relative',
+        ...(isDragOver && {
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(25, 118, 210, 0.1)',
+            border: '2px dashed #1976d2',
+            borderRadius: 2,
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }
+        })
+      }}
+    >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">
           Case Study Library
@@ -287,6 +398,59 @@ export const LibraryView: React.FC = () => {
           </Grid>
         )}
       </Box>
+
+      {/* Drag Overlay Message */}
+      {isDragOver && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1001,
+            backgroundColor: 'background.paper',
+            padding: 3,
+            borderRadius: 2,
+            boxShadow: 3,
+            textAlign: 'center',
+            border: '2px dashed #1976d2',
+          }}
+        >
+          <Upload sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+          <Typography variant="h6" color="primary">
+            Drop JSON files here to import
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Supported formats: .json files with case study data
+          </Typography>
+        </Box>
+      )}
+
+      {/* Status Messages for Drag & Drop */}
+      {(importError || importSuccess) && (
+        <Box sx={{ mb: 2 }}>
+          {importError && (
+            <Alert severity="error" sx={{ mb: 1 }}>
+              {importError}
+            </Alert>
+          )}
+          {importSuccess && (
+            <Alert severity="success" sx={{ mb: 1 }}>
+              {importSuccess}
+            </Alert>
+          )}
+        </Box>
+      )}
+
+      {/* Loading Indicator for Drag & Drop */}
+      {importLoading && (
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <CircularProgress size={20} sx={{ mr: 1 }} />
+          <Typography variant="body2">
+            Processing imported file...
+          </Typography>
+        </Box>
+      )}
 
       {/* Case Studies Grid */}
       <Grid container spacing={2}>
