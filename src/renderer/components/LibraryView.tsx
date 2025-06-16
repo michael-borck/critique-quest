@@ -86,6 +86,8 @@ export const LibraryView: React.FC = () => {
   const [collectionFilteredCases, setCollectionFilteredCases] = useState<CaseStudy[]>([]);
   const [showCollectionAssignment, setShowCollectionAssignment] = useState(false);
   const [casesForAssignment, setCasesForAssignment] = useState<CaseStudy[]>([]);
+  const [draggedCase, setDraggedCase] = useState<CaseStudy | null>(null);
+  const [dragOverCollection, setDragOverCollection] = useState<number | null>(null);
 
   useEffect(() => {
     loadCases();
@@ -391,6 +393,45 @@ export const LibraryView: React.FC = () => {
     setTimeout(() => setImportSuccess(null), 3000);
   };
 
+  const handleCaseDragStart = (e: React.DragEvent, caseStudy: CaseStudy) => {
+    setDraggedCase(caseStudy);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ''); // Required for some browsers
+  };
+
+  const handleCaseDragEnd = () => {
+    setDraggedCase(null);
+    setDragOverCollection(null);
+  };
+
+  const handleCollectionDragOver = (e: React.DragEvent, collectionId: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCollection(collectionId);
+  };
+
+  const handleCollectionDragLeave = () => {
+    setDragOverCollection(null);
+  };
+
+  const handleCollectionDrop = async (e: React.DragEvent, collectionId: number) => {
+    e.preventDefault();
+    setDragOverCollection(null);
+    
+    if (!draggedCase || !draggedCase.id) return;
+
+    try {
+      await addCaseToCollection(draggedCase.id, collectionId);
+      setImportSuccess(`Added "${draggedCase.title}" to collection`);
+      setTimeout(() => setImportSuccess(null), 3000);
+    } catch (error) {
+      setImportError(`Failed to add case to collection: ${error}`);
+      setTimeout(() => setImportError(null), 5000);
+    }
+    
+    setDraggedCase(null);
+  };
+
   const getBaseCases = () => {
     // Determine which cases to use based on collection selection
     if (selectedCollectionId && typeof selectedCollectionId === 'number') {
@@ -559,6 +600,19 @@ export const LibraryView: React.FC = () => {
           )}
         </Box>
       </Box>
+
+      {/* Drag and Drop Hint */}
+      {!bulkMode && filteredCases.length > 0 && collections.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="body2">
+                💡 Tip: Drag and drop case studies onto collections to organize them
+              </Typography>
+            </Box>
+          </Alert>
+        </Box>
+      )}
 
       {/* Search and Filters */}
       <Box sx={{ mb: 3 }}>
@@ -742,18 +796,73 @@ export const LibraryView: React.FC = () => {
         </Box>
       )}
 
+      {/* Drag and Drop Collection Zones */}
+      {draggedCase && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+            Drop on a collection to add "{draggedCase.title}"
+          </Typography>
+          <Grid container spacing={1}>
+            {collections.map((collection) => (
+              <Grid item xs={6} sm={4} md={3} key={collection.id}>
+                <Box
+                  onDragOver={(e) => collection.id && handleCollectionDragOver(e, collection.id)}
+                  onDragLeave={handleCollectionDragLeave}
+                  onDrop={(e) => collection.id && handleCollectionDrop(e, collection.id)}
+                  sx={{
+                    p: 2,
+                    border: '2px dashed',
+                    borderColor: dragOverCollection === collection.id ? 'primary.main' : 'grey.300',
+                    borderRadius: 2,
+                    backgroundColor: dragOverCollection === collection.id ? 'primary.50' : 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'primary.50',
+                    },
+                  }}
+                >
+                  <Folder sx={{ color: collection.color || '#666' }} />
+                  <Box>
+                    <Typography variant="body2" fontWeight="medium">
+                      {collection.name}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      {collection.case_count || 0} cases
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
       {/* Case Studies Grid */}
       <Grid container spacing={2}>
         {filteredCases.map((caseStudy) => (
           <Grid item xs={12} sm={6} md={4} key={caseStudy.id}>
             <Card 
+              draggable={!bulkMode}
+              onDragStart={(e) => !bulkMode && handleCaseDragStart(e, caseStudy)}
+              onDragEnd={handleCaseDragEnd}
               sx={{ 
                 height: '100%', 
                 display: 'flex', 
                 flexDirection: 'column',
-                cursor: 'pointer',
+                cursor: bulkMode ? 'pointer' : draggedCase ? 'grabbing' : 'grab',
                 border: bulkMode && caseStudy.id && selectedCases.has(caseStudy.id) ? '2px solid #1976d2' : '1px solid #e0e0e0',
                 backgroundColor: bulkMode && caseStudy.id && selectedCases.has(caseStudy.id) ? 'rgba(25, 118, 210, 0.05)' : 'inherit',
+                opacity: draggedCase?.id === caseStudy.id ? 0.5 : 1,
+                transition: 'opacity 0.2s ease',
+                '&:hover': {
+                  boxShadow: 2,
+                  transform: !bulkMode && !draggedCase ? 'translateY(-2px)' : 'none',
+                },
               }}
               onClick={() => bulkMode && caseStudy.id ? handleSelectCase(caseStudy.id) : setSelectedCase(caseStudy)}
             >
