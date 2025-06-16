@@ -1,11 +1,16 @@
 import { create } from 'zustand';
-import type { CaseStudy, GenerationInput, UserPreferences } from '../../shared/types';
+import type { CaseStudy, Collection, GenerationInput, UserPreferences } from '../../shared/types';
 
 interface AppState {
   // Cases
   cases: CaseStudy[];
   currentCase: CaseStudy | null;
   isGenerating: boolean;
+  
+  // Collections
+  collections: Collection[];
+  selectedCollectionId: number | null;
+  collectionViewMode: 'all' | 'organized' | 'unorganized';
   
   // UI State
   selectedView: string;
@@ -14,6 +19,7 @@ interface AppState {
     domain?: string;
     complexity?: string;
     favorite?: boolean;
+    collection_id?: number;
   };
   
   // AI Status
@@ -35,12 +41,29 @@ interface AppState {
   setAiStatus: (status: 'connected' | 'disconnected' | 'error') => void;
   setPreferences: (preferences: UserPreferences) => void;
   
+  // Collection actions
+  setCollections: (collections: Collection[]) => void;
+  addCollection: (collection: Collection) => void;
+  updateCollection: (collection: Collection) => void;
+  deleteCollectionById: (id: number) => void;
+  setSelectedCollectionId: (id: number | null) => void;
+  setCollectionViewMode: (mode: 'all' | 'organized' | 'unorganized') => void;
+  
   // Async actions
   loadCases: () => Promise<void>;
   saveCase: (caseStudy: CaseStudy) => Promise<void>;
   generateCase: (input: GenerationInput) => Promise<void>;
   searchCases: (query: string) => Promise<void>;
   loadPreferences: () => Promise<void>;
+  
+  // Async collection actions
+  loadCollections: () => Promise<void>;
+  saveCollection: (collection: Collection) => Promise<void>;
+  deleteCollection: (id: number) => Promise<void>;
+  addCaseToCollection: (caseId: number, collectionId: number) => Promise<void>;
+  removeCaseFromCollection: (caseId: number, collectionId: number) => Promise<void>;
+  getCasesByCollection: (collectionId: number) => Promise<CaseStudy[]>;
+  getCollectionsByCase: (caseId: number) => Promise<Collection[]>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -48,6 +71,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   cases: [],
   currentCase: null,
   isGenerating: false,
+  collections: [],
+  selectedCollectionId: null,
+  collectionViewMode: 'all',
   selectedView: 'generation',
   searchQuery: '',
   filters: {},
@@ -72,6 +98,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFilters: (filters) => set({ filters }),
   setAiStatus: (aiStatus) => set({ aiStatus }),
   setPreferences: (preferences) => set({ preferences }),
+  
+  // Collection synchronous actions
+  setCollections: (collections) => set({ collections }),
+  addCollection: (collection) => set((state) => ({ collections: [collection, ...state.collections] })),
+  updateCollection: (collection) => set((state) => ({
+    collections: state.collections.map(c => c.id === collection.id ? collection : c)
+  })),
+  deleteCollectionById: (id) => set((state) => ({
+    collections: state.collections.filter(c => c.id !== id),
+    selectedCollectionId: state.selectedCollectionId === id ? null : state.selectedCollectionId
+  })),
+  setSelectedCollectionId: (selectedCollectionId) => set({ selectedCollectionId }),
+  setCollectionViewMode: (collectionViewMode) => set({ collectionViewMode }),
   
   // Async actions
   loadCases: async () => {
@@ -162,6 +201,82 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to load preferences:', error);
+    }
+  },
+  
+  // Collection async actions
+  loadCollections: async () => {
+    try {
+      const collections = await window.electronAPI.getCollections();
+      set({ collections });
+    } catch (error) {
+      console.error('Failed to load collections:', error);
+    }
+  },
+  
+  saveCollection: async (collection) => {
+    try {
+      const id = await window.electronAPI.saveCollection(collection);
+      const savedCollection = { ...collection, id };
+      
+      if (collection.id) {
+        get().updateCollection(savedCollection);
+      } else {
+        get().addCollection(savedCollection);
+      }
+    } catch (error) {
+      console.error('Failed to save collection:', error);
+      throw error;
+    }
+  },
+  
+  deleteCollection: async (id) => {
+    try {
+      await window.electronAPI.deleteCollection(id);
+      get().deleteCollectionById(id);
+    } catch (error) {
+      console.error('Failed to delete collection:', error);
+      throw error;
+    }
+  },
+  
+  addCaseToCollection: async (caseId, collectionId) => {
+    try {
+      await window.electronAPI.addCaseToCollection(caseId, collectionId);
+      // Reload collections to update counts
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to add case to collection:', error);
+      throw error;
+    }
+  },
+  
+  removeCaseFromCollection: async (caseId, collectionId) => {
+    try {
+      await window.electronAPI.removeCaseFromCollection(caseId, collectionId);
+      // Reload collections to update counts
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to remove case from collection:', error);
+      throw error;
+    }
+  },
+  
+  getCasesByCollection: async (collectionId) => {
+    try {
+      return await window.electronAPI.getCasesByCollection(collectionId);
+    } catch (error) {
+      console.error('Failed to get cases by collection:', error);
+      return [];
+    }
+  },
+  
+  getCollectionsByCase: async (caseId) => {
+    try {
+      return await window.electronAPI.getCollectionsByCase(caseId);
+    } catch (error) {
+      console.error('Failed to get collections by case:', error);
+      return [];
     }
   }
 }));
