@@ -28,10 +28,12 @@ import {
   Folder,
   FolderOpen,
   Description,
+  Visibility,
   ExpandMore,
   ChevronRight,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
+import { CollectionContentDialog } from './CollectionContentDialog';
 import type { Collection } from '../../shared/types';
 
 export const CollectionManager: React.FC = () => {
@@ -53,6 +55,8 @@ export const CollectionManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showContentDialog, setShowContentDialog] = useState(false);
+  const [selectedCollectionForContent, setSelectedCollectionForContent] = useState<Collection | null>(null);
 
   useEffect(() => {
     loadCollections();
@@ -227,6 +231,16 @@ export const CollectionManager: React.FC = () => {
         </Button>
         <Button
           size="small"
+          startIcon={<Visibility />}
+          onClick={() => {
+            setSelectedCollectionForContent(collection);
+            setShowContentDialog(true);
+          }}
+        >
+          View Contents
+        </Button>
+        <Button
+          size="small"
           startIcon={<Add />}
           onClick={() => {
             setFormData({
@@ -397,6 +411,16 @@ export const CollectionManager: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Collection Content Dialog */}
+      <CollectionContentDialog
+        open={showContentDialog}
+        onClose={() => {
+          setShowContentDialog(false);
+          setSelectedCollectionForContent(null);
+        }}
+        collection={selectedCollectionForContent}
+      />
     </Box>
   );
 };
