@@ -31,8 +31,8 @@ const DRAWER_WIDTH = 240;
 type View = 'generation' | 'library' | 'practice' | 'settings';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>('generation');
-  const { cases, aiStatus, preferences, loadPreferences, loadCollections } = useAppStore();
+  const { cases, aiStatus, preferences, selectedView, setSelectedView, loadPreferences, loadCollections } = useAppStore();
+  const currentView = (selectedView as View) || 'generation';
 
   useEffect(() => {
     // Load preferences and collections on app startup
@@ -43,9 +43,9 @@ const App: React.FC = () => {
   // Set initial view based on user preferences
   useEffect(() => {
     if (preferences?.default_home_page) {
-      setCurrentView(preferences.default_home_page as View);
+      setSelectedView(preferences.default_home_page);
     }
-  }, [preferences]);
+  }, [preferences, setSelectedView]);
 
   const renderView = () => {
     switch (currentView) {
@@ -123,7 +123,7 @@ const App: React.FC = () => {
                 key={item.id}
                 button
                 selected={currentView === item.id}
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => setSelectedView(item.id)}
                 sx={{
                   borderRadius: 1,
                   mb: 0.5,

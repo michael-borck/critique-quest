@@ -74,10 +74,18 @@ Guidelines:
 - Keep the tone professional but accessible`;
   }
 
-  async generateCaseStudy(input: GenerationInput, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string): Promise<AIResponse> {
+  async generateCaseStudy(input: GenerationInput, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<AIResponse> {
     switch (provider.toLowerCase()) {
       case 'ollama':
-        return this.generateWithOllama(input, model);
+        if (endpoint) {
+          const originalEndpoint = this.ollamaEndpoint;
+          this.ollamaEndpoint = endpoint;
+          const result = await this.generateWithOllama(input, model);
+          this.ollamaEndpoint = originalEndpoint;
+          return result;
+        } else {
+          return this.generateWithOllama(input, model);
+        }
       case 'openai':
       default:
         return this.generateWithOpenAI(input, model, apiKey);
@@ -241,11 +249,7 @@ Make it more engaging and detailed while maintaining the same educational object
     }
   }
 
-  async suggestContext(domain: string, complexity: string, scenarioType: string): Promise<string> {
-    if (!this.openaiClient) {
-      throw new Error('AI client not initialized');
-    }
-
+  async suggestContext(domain: string, complexity: string, scenarioType: string, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<string> {
     const prompt = `Generate a detailed context setting for a ${complexity.toLowerCase()} level ${domain.toLowerCase()} case study focused on ${scenarioType.toLowerCase()}.
 
 The context should include:
@@ -262,22 +266,77 @@ Example format:
 "[Company Name] is a [size] [industry] company based in [location]... [situation/challenge]..."`;
 
     try {
-      const completion = await this.openaiClient.chat.completions.create({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      });
+      if (provider === 'ollama') {
+        if (endpoint) {
+          const originalEndpoint = this.ollamaEndpoint;
+          this.ollamaEndpoint = endpoint;
+          const result = await this.generateContextWithOllama(prompt, model);
+          this.ollamaEndpoint = originalEndpoint;
+          return result;
+        } else {
+          return await this.generateContextWithOllama(prompt, model);
+        }
+      } else {
+        if (!this.openaiClient && apiKey) {
+          this.initializeOpenAI(apiKey);
+        }
+        
+        if (!this.openaiClient) {
+          throw new Error('AI client not initialized');
+        }
 
-      return completion.choices[0]?.message?.content || 'Failed to generate context suggestion';
+        const completion = await this.openaiClient.chat.completions.create({
+          model: model,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        });
+
+        return completion.choices[0]?.message?.content || 'Failed to generate context suggestion';
+      }
     } catch (error) {
       console.error('Context Suggestion Error:', error);
       throw new Error('Failed to generate context suggestion');
+    }
+  }
+
+  private async generateContextWithOllama(prompt: string, model: string): Promise<string> {
+    try {
+      const response = await axios.post(`${this.ollamaEndpoint}/api/generate`, {
+        model: model,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 500,
+        }
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const responseText = response.data.response;
+      
+      if (!responseText) {
+        throw new Error('No response received from Ollama');
+      }
+
+      return responseText;
+    } catch (error) {
+      console.error('Ollama Context Generation Error:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNREFUSED') {
+          throw new Error('Cannot connect to Ollama. Please ensure Ollama is running and check your endpoint configuration.');
+        }
+        throw new Error(`Ollama API error: ${error.response?.data?.error || error.message}`);
+      }
+      throw new Error(`Failed to generate context with Ollama: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

@@ -46,6 +46,7 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
     updateCase,
     deleteCase,
     removeCaseFromCollection,
+    startPractice,
   } = useAppStore();
 
   const [cases, setCases] = useState<CaseStudy[]>([]);
@@ -123,9 +124,8 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
   };
 
   const handlePractice = (caseStudy: CaseStudy) => {
-    setCurrentCase(caseStudy);
+    startPractice(caseStudy);
     onClose();
-    // Navigation to practice view would happen here
   };
 
   const handleViewCase = (caseStudy: CaseStudy) => {

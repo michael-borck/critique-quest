@@ -76,16 +76,16 @@ class Application {
     });
 
     // AI operations
-    ipcMain.handle('ai:generateCase', async (_, input, provider, model, apiKey) => {
-      return this.aiService.generateCaseStudy(input, provider, model, apiKey);
+    ipcMain.handle('ai:generateCase', async (_, input, provider, model, apiKey, endpoint) => {
+      return this.aiService.generateCaseStudy(input, provider, model, apiKey, endpoint);
     });
 
     ipcMain.handle('ai:regenerateSection', async (_, section, context) => {
       return this.aiService.regenerateSection(section, context);
     });
 
-    ipcMain.handle('ai:suggestContext', async (_, domain, complexity, scenarioType) => {
-      return this.aiService.suggestContext(domain, complexity, scenarioType);
+    ipcMain.handle('ai:suggestContext', async (_, domain, complexity, scenarioType, provider, model, apiKey, endpoint) => {
+      return this.aiService.suggestContext(domain, complexity, scenarioType, provider, model, apiKey, endpoint);
     });
 
     ipcMain.handle('ai:testConnection', async (_, provider, apiKey, endpoint) => {

@@ -55,6 +55,7 @@ interface AppState {
   generateCase: (input: GenerationInput) => Promise<void>;
   searchCases: (query: string) => Promise<void>;
   loadPreferences: () => Promise<void>;
+  startPractice: (caseStudy: CaseStudy) => void;
   
   // Async collection actions
   loadCollections: () => Promise<void>;
@@ -155,7 +156,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         console.log('Using Ollama with model:', model);
       }
       
-      const result = await window.electronAPI.generateCase(input, provider, model, apiKey);
+      let endpoint;
+      if (provider === 'ollama' && preferences?.ollama_endpoint) {
+        endpoint = preferences.ollama_endpoint;
+      }
+      
+      const result = await window.electronAPI.generateCase(input, provider, model, apiKey, endpoint);
       const newCase: CaseStudy = {
         title: result.title || 'Untitled Case Study',
         domain: input.domain,
@@ -202,6 +208,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (error) {
       console.error('Failed to load preferences:', error);
     }
+  },
+
+  startPractice: (caseStudy) => {
+    set({ currentCase: caseStudy, selectedView: 'practice' });
   },
   
   // Collection async actions

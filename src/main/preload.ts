@@ -11,11 +11,11 @@ const electronAPI = {
   setPreference: (key: string, value: any) => ipcRenderer.invoke('db:setPreference', key, value),
 
   // AI operations
-  generateCase: (input: GenerationInput, provider?: string, model?: string, apiKey?: string) => 
-    ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey),
+  generateCase: (input: GenerationInput, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
+    ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey, endpoint),
   regenerateSection: (section: string, context: any) => ipcRenderer.invoke('ai:regenerateSection', section, context),
-  suggestContext: (domain: string, complexity: string, scenarioType: string) => 
-    ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType),
+  suggestContext: (domain: string, complexity: string, scenarioType: string, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
+    ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType, provider, model, apiKey, endpoint),
   testConnection: (provider: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:testConnection', provider, apiKey, endpoint),
   getOllamaModels: (endpoint?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint),

@@ -124,10 +124,25 @@ export const GenerationView: React.FC = () => {
     setError('');
     
     try {
+      const provider = preferences?.default_ai_provider || 'openai';
+      let model = preferences?.default_ai_model || 'gpt-4';
+      
+      // Use appropriate model for Ollama
+      if (provider === 'ollama') {
+        model = preferences?.default_ollama_model || 'llama2';
+      }
+      
+      const apiKey = provider === 'openai' ? preferences?.api_keys?.openai : undefined;
+      const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
+      
       const suggestedContext = await window.electronAPI.suggestContext(
         input.domain,
         input.complexity,
-        input.scenario_type
+        input.scenario_type,
+        provider,
+        model,
+        apiKey,
+        endpoint
       );
       
       // Set the suggested context in the input
@@ -173,18 +188,51 @@ export const GenerationView: React.FC = () => {
     // First generate context suggestion, then generate the case study
     try {
       setIsGeneratingContext(true);
+      
+      const provider = preferences?.default_ai_provider || 'openai';
+      let model = preferences?.default_ai_model || 'gpt-4';
+      
+      // Use appropriate model for Ollama
+      if (provider === 'ollama') {
+        model = preferences?.default_ollama_model || 'llama2';
+      }
+      
+      const apiKey = provider === 'openai' ? preferences?.api_keys?.openai : undefined;
+      const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
+      
       const suggestedContext = await window.electronAPI.suggestContext(
         randomDomain,
         randomComplexity,
-        randomScenarioType
+        randomScenarioType,
+        provider,
+        model,
+        apiKey,
+        endpoint
       );
       
-      setInput(prev => ({ ...prev, context_setting: suggestedContext }));
+      // Create the complete input object with the generated context
+      const completeInput = {
+        domain: randomDomain,
+        complexity: randomComplexity,
+        scenario_type: randomScenarioType,
+        length_preference: randomLength,
+        key_concepts: allSelectedConcepts.join(', '),
+        context_setting: suggestedContext,
+        custom_prompt: input.custom_prompt,
+        include_elements: input.include_elements,
+      };
+      
+      setInput(completeInput);
       setIsGeneratingContext(false);
 
-      // Small delay to let user see the filled fields, then generate
-      setTimeout(() => {
-        handleGenerate();
+      // Small delay to let user see the filled fields, then generate directly with complete input
+      setTimeout(async () => {
+        setError('');
+        try {
+          await generateCase(completeInput, provider, model);
+        } catch (err) {
+          setError('Failed to generate case study. Please check your AI configuration.');
+        }
       }, 1000);
     } catch (err) {
       setIsGeneratingContext(false);

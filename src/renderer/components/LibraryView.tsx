@@ -69,6 +69,7 @@ export const LibraryView: React.FC = () => {
     setCurrentCase,
     saveCase,
     getCasesByCollection,
+    startPractice,
   } = useAppStore();
 
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
@@ -1014,8 +1015,7 @@ export const LibraryView: React.FC = () => {
                   startIcon={<PlayArrow />}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setCurrentCase(caseStudy);
-                    // Navigate to practice view
+                    startPractice(caseStudy);
                   }}
                 >
                   Practice
@@ -1129,7 +1129,9 @@ export const LibraryView: React.FC = () => {
               </Button>
               <Button 
                 onClick={() => {
-                  setCurrentCase(selectedCase);
+                  if (selectedCase) {
+                    startPractice(selectedCase);
+                  }
                   setSelectedCase(null);
                 }} 
                 startIcon={<PlayArrow />}
