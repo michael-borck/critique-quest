@@ -127,6 +127,7 @@ export const LibraryView: React.FC = () => {
             >
               <MenuItem value="pdf">PDF</MenuItem>
               <MenuItem value="json">JSON</MenuItem>
+              <MenuItem value="markdown">Markdown</MenuItem>
               <MenuItem value="html">HTML</MenuItem>
               <MenuItem value="text">Text</MenuItem>
               <MenuItem value="word">Word</MenuItem>
