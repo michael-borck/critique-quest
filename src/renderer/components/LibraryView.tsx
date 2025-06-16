@@ -135,18 +135,44 @@ export const LibraryView: React.FC = () => {
       setImportError(null);
       setImportSuccess(null);
 
-      const importedCase = await window.electronAPI.importCaseFromURL(importUrl.trim());
-      await saveCase(importedCase);
-      
-      setImportSuccess(`Successfully imported case: "${importedCase.title}"`);
-      setImportUrl('');
-      loadCases(); // Refresh the cases list
-      
-      // Auto-close dialog after success
-      setTimeout(() => {
-        setShowImportDialog(false);
-        setImportSuccess(null);
-      }, 2000);
+      // First try bulk import (collection format)
+      try {
+        const bulkResult = await window.electronAPI.importBulkCasesFromURL(importUrl.trim());
+        
+        // Save all cases in the collection
+        for (const caseStudy of bulkResult.cases) {
+          await saveCase(caseStudy);
+        }
+        
+        setImportSuccess(
+          `Successfully imported collection: "${bulkResult.collectionInfo.title}" with ${bulkResult.cases.length} case studies`
+        );
+        setImportUrl('');
+        loadCases(); // Refresh the cases list
+        
+        // Auto-close dialog after success
+        setTimeout(() => {
+          setShowImportDialog(false);
+          setImportSuccess(null);
+        }, 3000);
+        return;
+      } catch (bulkError) {
+        // If bulk import fails, try single case import
+        console.log('Bulk import failed, trying single case import:', bulkError);
+        
+        const importedCase = await window.electronAPI.importCaseFromURL(importUrl.trim());
+        await saveCase(importedCase);
+        
+        setImportSuccess(`Successfully imported case: "${importedCase.title}"`);
+        setImportUrl('');
+        loadCases(); // Refresh the cases list
+        
+        // Auto-close dialog after success
+        setTimeout(() => {
+          setShowImportDialog(false);
+          setImportSuccess(null);
+        }, 2000);
+      }
     } catch (error) {
       setImportError(`Failed to import from URL: ${error}`);
     } finally {
@@ -201,47 +227,69 @@ export const LibraryView: React.FC = () => {
 
       const fileContent = await file.text();
       
-      // Try to parse the JSON
-      let parsedContent;
+      // First try bulk import (collection format)
       try {
-        parsedContent = JSON.parse(fileContent);
-      } catch {
-        throw new Error('Invalid JSON format');
+        const bulkResult = await window.electronAPI.importBulkCasesFromFile(fileContent);
+        
+        // Save all cases in the collection
+        for (const caseStudy of bulkResult.cases) {
+          await saveCase(caseStudy);
+        }
+        
+        setImportSuccess(
+          `Successfully imported collection: "${bulkResult.collectionInfo.title}" with ${bulkResult.cases.length} case studies from file "${file.name}"`
+        );
+        loadCases(); // Refresh the cases list
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setImportSuccess(null), 3000);
+        return;
+      } catch (bulkError) {
+        // If bulk import fails, try single case import
+        console.log('Bulk import failed, trying single case import:', bulkError);
+        
+        // Try to parse the JSON
+        let parsedContent;
+        try {
+          parsedContent = JSON.parse(fileContent);
+        } catch {
+          throw new Error('Invalid JSON format');
+        }
+
+        // Validate the case study structure
+        if (!parsedContent.title || !parsedContent.content) {
+          throw new Error('Invalid case study format: missing required fields (title, content)');
+        }
+
+        // Clean and validate the imported data (similar to URL import)
+        const caseStudy: CaseStudy = {
+          title: String(parsedContent.title),
+          domain: String(parsedContent.domain || 'General'),
+          complexity: ['Beginner', 'Intermediate', 'Advanced'].includes(parsedContent.complexity) 
+            ? parsedContent.complexity 
+            : 'Intermediate',
+          scenario_type: ['Problem-solving', 'Decision-making', 'Ethical Dilemma', 'Strategic Planning'].includes(parsedContent.scenario_type)
+            ? parsedContent.scenario_type
+            : 'Problem-solving',
+          content: String(parsedContent.content),
+          questions: String(parsedContent.questions || ''),
+          answers: parsedContent.answers ? String(parsedContent.answers) : undefined,
+          tags: Array.isArray(parsedContent.tags) ? parsedContent.tags.map(String) : ['imported', 'file'],
+          is_favorite: Boolean(parsedContent.is_favorite || false),
+          word_count: String(parsedContent.content).split(' ').length,
+          usage_count: 0,
+          created_date: new Date().toISOString(),
+          modified_date: new Date().toISOString(),
+        };
+
+        await saveCase(caseStudy);
+        
+        setImportSuccess(`Successfully imported case: "${caseStudy.title}" from file "${file.name}"`);
+        loadCases(); // Refresh the cases list
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setImportSuccess(null), 3000);
       }
-
-      // Validate the case study structure
-      if (!parsedContent.title || !parsedContent.content) {
-        throw new Error('Invalid case study format: missing required fields (title, content)');
-      }
-
-      // Clean and validate the imported data (similar to URL import)
-      const caseStudy: CaseStudy = {
-        title: String(parsedContent.title),
-        domain: String(parsedContent.domain || 'General'),
-        complexity: ['Beginner', 'Intermediate', 'Advanced'].includes(parsedContent.complexity) 
-          ? parsedContent.complexity 
-          : 'Intermediate',
-        scenario_type: ['Problem-solving', 'Decision-making', 'Ethical Dilemma', 'Strategic Planning'].includes(parsedContent.scenario_type)
-          ? parsedContent.scenario_type
-          : 'Problem-solving',
-        content: String(parsedContent.content),
-        questions: String(parsedContent.questions || ''),
-        answers: parsedContent.answers ? String(parsedContent.answers) : undefined,
-        tags: Array.isArray(parsedContent.tags) ? parsedContent.tags.map(String) : ['imported', 'file'],
-        is_favorite: Boolean(parsedContent.is_favorite || false),
-        word_count: String(parsedContent.content).split(' ').length,
-        usage_count: 0,
-        created_date: new Date().toISOString(),
-        modified_date: new Date().toISOString(),
-      };
-
-      await saveCase(caseStudy);
-      
-      setImportSuccess(`Successfully imported case: "${caseStudy.title}" from file "${file.name}"`);
-      loadCases(); // Refresh the cases list
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setImportSuccess(null), 3000);
     } catch (error) {
       setImportError(`Failed to import file "${file.name}": ${error}`);
       setTimeout(() => setImportError(null), 5000);
@@ -514,7 +562,7 @@ export const LibraryView: React.FC = () => {
             Drop JSON files here to import
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            Supported formats: .json files with case study data
+            Supports single case studies or collections with multiple cases
           </Typography>
         </Box>
       )}
@@ -751,7 +799,7 @@ export const LibraryView: React.FC = () => {
           {importTab === 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                Import a case study from a JSON URL. The URL should return a valid JSON case study format.
+                Import case studies from a JSON URL. Supports single cases or collections with multiple cases.
               </Typography>
               
               <TextField
@@ -765,7 +813,7 @@ export const LibraryView: React.FC = () => {
               />
 
               <Typography variant="caption" color="textSecondary">
-                Supports HTTPS URLs returning JSON case study data.
+                Supports HTTPS URLs returning JSON case study data or collections.
               </Typography>
             </Box>
           )}
@@ -774,7 +822,7 @@ export const LibraryView: React.FC = () => {
           {importTab === 1 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                Import a case study from a local JSON file.
+                Import case studies from a local JSON file. Supports single cases or collections.
               </Typography>
               
               <Button
