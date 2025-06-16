@@ -66,6 +66,7 @@ export const GenerationView: React.FC = () => {
   const [isGeneratingContext, setIsGeneratingContext] = useState<boolean>(false);
   const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
   const [selectedPersonalSkills, setSelectedPersonalSkills] = useState<string[]>([]);
+  const [expertMode, setExpertMode] = useState<boolean>(false);
 
   const handleInputChange = (field: keyof GenerationInput, value: any) => {
     setInput(prev => ({ ...prev, [field]: value }));
@@ -191,11 +192,13 @@ export const GenerationView: React.FC = () => {
     }
   };
 
-  // Update key_concepts when selected concepts change
+  // Update key_concepts when selected concepts change (only in non-expert mode)
   useEffect(() => {
-    const allConcepts = [...selectedConcepts, ...selectedPersonalSkills];
-    setInput(prev => ({ ...prev, key_concepts: allConcepts.join(', ') }));
-  }, [selectedConcepts, selectedPersonalSkills]);
+    if (!expertMode) {
+      const allConcepts = [...selectedConcepts, ...selectedPersonalSkills];
+      setInput(prev => ({ ...prev, key_concepts: allConcepts.join(', ') }));
+    }
+  }, [selectedConcepts, selectedPersonalSkills, expertMode]);
 
   // Get available concepts for current domain
   const availableConcepts = getAllConceptsForDomain(input.domain);
@@ -219,15 +222,17 @@ export const GenerationView: React.FC = () => {
             />
           )}
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<Casino />}
-          onClick={handleFeelingLucky}
-          disabled={isGenerating || isGeneratingContext}
-          color="secondary"
-        >
-          I'm Feeling Lucky
-        </Button>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={expertMode}
+              onChange={(e) => setExpertMode(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Expert Mode"
+          sx={{ mr: 0 }}
+        />
       </Box>
 
       <Grid container spacing={3}>
@@ -303,7 +308,7 @@ export const GenerationView: React.FC = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                {expertMode ? (
                   <TextField
                     fullWidth
                     label="Context Setting"
@@ -312,95 +317,122 @@ export const GenerationView: React.FC = () => {
                     value={input.context_setting}
                     onChange={(e) => handleInputChange('context_setting', e.target.value)}
                     placeholder="Describe the setting, industry, organization, or situation for your case study..."
-                    disabled={isGeneratingContext}
                   />
-                  <Button
-                    variant="outlined"
-                    onClick={handleSuggestContext}
-                    disabled={isGeneratingContext || isGenerating}
-                    startIcon={isGeneratingContext ? <CircularProgress size={16} /> : <Lightbulb />}
-                    sx={{ 
-                      minWidth: 'auto',
-                      px: 2,
-                      py: 1.5,
-                      height: 'fit-content',
-                      mt: 0.5,
-                      flexShrink: 0
-                    }}
-                    size="small"
-                  >
-                    {isGeneratingContext ? 'Generating...' : 'AI Suggest'}
-                  </Button>
-                </Box>
-                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                  💡 Need inspiration? Use "AI Suggest" to generate a context based on your selected domain, complexity, and scenario type.
-                </Typography>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                      <TextField
+                        fullWidth
+                        label="Context Setting"
+                        multiline
+                        rows={3}
+                        value={input.context_setting}
+                        onChange={(e) => handleInputChange('context_setting', e.target.value)}
+                        placeholder="Describe the setting, industry, organization, or situation for your case study..."
+                        disabled={isGeneratingContext}
+                      />
+                      <Button
+                        variant="outlined"
+                        onClick={handleSuggestContext}
+                        disabled={isGeneratingContext || isGenerating}
+                        startIcon={isGeneratingContext ? <CircularProgress size={16} /> : <Lightbulb />}
+                        sx={{ 
+                          minWidth: 'auto',
+                          px: 2,
+                          py: 1.5,
+                          height: 'fit-content',
+                          mt: 0.5,
+                          flexShrink: 0
+                        }}
+                        size="small"
+                      >
+                        {isGeneratingContext ? 'Generating...' : 'AI Suggest'}
+                      </Button>
+                    </Box>
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                      💡 Need inspiration? Use "AI Suggest" to generate a context based on your selected domain, complexity, and scenario type.
+                    </Typography>
+                  </>
+                )}
               </Grid>
 
               <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>
-                  Key Concepts & Theories
-                </Typography>
-                
-                {/* Domain-specific concepts */}
-                <Autocomplete
-                  multiple
-                  id="domain-concepts"
-                  options={availableConcepts}
-                  value={selectedConcepts}
-                  onChange={(_, newValue) => setSelectedConcepts(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label={`${input.domain} Concepts`}
-                      placeholder="Select relevant theories and frameworks..."
-                      sx={{ mb: 2 }}
+                {expertMode ? (
+                  <TextField
+                    fullWidth
+                    label="Key Concepts"
+                    value={input.key_concepts}
+                    onChange={(e) => handleInputChange('key_concepts', e.target.value)}
+                    placeholder="Specific theories, frameworks, or concepts to include (e.g., Porter's Five Forces, Emotional Intelligence, SWOT Analysis)..."
+                    helperText="Enter any theories, frameworks, or concepts you'd like to incorporate into your case study"
+                  />
+                ) : (
+                  <>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                      Key Concepts & Theories
+                    </Typography>
+                    
+                    {/* Domain-specific concepts */}
+                    <Autocomplete
+                      multiple
+                      id="domain-concepts"
+                      options={availableConcepts}
+                      value={selectedConcepts}
+                      onChange={(_, newValue) => setSelectedConcepts(newValue)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label={`${input.domain} Concepts`}
+                          placeholder="Select relevant theories and frameworks..."
+                          sx={{ mb: 2 }}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            variant="outlined"
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                          />
+                        ))
+                      }
                     />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                      />
-                    ))
-                  }
-                />
 
-                {/* Personal & Interpersonal Skills */}
-                <Autocomplete
-                  multiple
-                  id="personal-skills"
-                  options={availablePersonalSkills}
-                  value={selectedPersonalSkills}
-                  onChange={(_, newValue) => setSelectedPersonalSkills(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Personal & Interpersonal Skills"
-                      placeholder="Add cross-domain personal skills..."
+                    {/* Personal & Interpersonal Skills */}
+                    <Autocomplete
+                      multiple
+                      id="personal-skills"
+                      options={availablePersonalSkills}
+                      value={selectedPersonalSkills}
+                      onChange={(_, newValue) => setSelectedPersonalSkills(newValue)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Personal & Interpersonal Skills"
+                          placeholder="Add cross-domain personal skills..."
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            variant="outlined"
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            color="secondary"
+                          />
+                        ))
+                      }
                     />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        color="secondary"
-                      />
-                    ))
-                  }
-                />
 
-                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                  💡 Selected concepts will be integrated into your case study. Personal skills apply across all domains.
-                </Typography>
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                      💡 Selected concepts will be integrated into your case study. Personal skills apply across all domains.
+                    </Typography>
+                  </>
+                )}
               </Grid>
             </Grid>
 
@@ -449,15 +481,26 @@ export const GenerationView: React.FC = () => {
               </Alert>
             )}
 
-            <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <Button
                 variant="contained"
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || isGeneratingContext}
                 startIcon={isGenerating ? <CircularProgress size={20} /> : <AutoAwesome />}
                 size="large"
               >
                 {isGenerating ? 'Generating...' : 'Generate Case Study'}
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<Casino />}
+                onClick={handleFeelingLucky}
+                disabled={isGenerating || isGeneratingContext}
+                color="secondary"
+                size="large"
+              >
+                I'm Feeling Lucky
               </Button>
 
               {currentCase && (
@@ -465,6 +508,7 @@ export const GenerationView: React.FC = () => {
                   variant="outlined"
                   onClick={handleSave}
                   startIcon={<Save />}
+                  size="large"
                 >
                   Save
                 </Button>
