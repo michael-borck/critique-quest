@@ -491,16 +491,17 @@ export const SettingsView: React.FC = () => {
               Data & Privacy
             </Typography>
 
-            <Alert severity="info" sx={{ mb: 3 }}>
-              CritiqueQuest stores all your data locally on your device. No data is sent to our servers.
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <strong>Complete Privacy:</strong> CritiqueQuest stores all your data locally on your device. No data leaves your device.
             </Alert>
 
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" gutterBottom>
-                Data Storage
+                Local Data Storage
               </Typography>
               <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                Your case studies, preferences, and usage data are stored in a local SQLite database.
+                Your case studies, collections, preferences, and AI usage data are stored in a local JSON database on your device. 
+                This ensures complete privacy and works offline.
               </Typography>
               <Button variant="outlined" sx={{ mr: 1 }}>
                 Export All Data
@@ -514,18 +515,25 @@ export const SettingsView: React.FC = () => {
 
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" gutterBottom>
-                Privacy Settings
+                Local Usage Tracking
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Track your own usage patterns to understand your learning and content creation habits. 
+                All data stays on your device.
               </Typography>
               <FormControlLabel
                 control={<Switch defaultChecked />}
-                label="Track usage statistics (local only)"
-                sx={{ mb: 1 }}
+                label="Track AI usage (tokens, costs, providers)"
+                sx={{ mb: 1, display: 'block' }}
               />
               <FormControlLabel
-                control={<Switch />}
-                label="Send anonymous analytics"
-                sx={{ mb: 1 }}
+                control={<Switch defaultChecked />}
+                label="Track practice sessions and case study usage"
+                sx={{ mb: 1, display: 'block' }}
               />
+              <Typography variant="caption" color="textSecondary">
+                💡 This helps you see which case studies are most popular and track your AI usage costs.
+              </Typography>
             </Box>
 
             <Divider sx={{ my: 3 }} />
