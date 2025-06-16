@@ -514,6 +514,14 @@ export const LibraryView: React.FC = () => {
               {selectedCases.size} selected
             </Typography>
           )}
+          {collections.length > 0 && (
+            <Chip 
+              label={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
+              size="small"
+              variant="outlined"
+              color="primary"
+            />
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
           {bulkMode ? (
@@ -796,55 +804,116 @@ export const LibraryView: React.FC = () => {
         </Box>
       )}
 
-      {/* Drag and Drop Collection Zones */}
-      {draggedCase && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
-            Drop on a collection to add "{draggedCase.title}"
-          </Typography>
-          <Grid container spacing={1}>
-            {collections.map((collection) => (
-              <Grid item xs={6} sm={4} md={3} key={collection.id}>
+
+      {/* Main Content Layout */}
+      <Box sx={{ display: 'flex', gap: 3 }}>
+        {/* Collections Sidebar */}
+        {collections.length > 0 && (
+          <Box sx={{ width: 280, flexShrink: 0 }}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Folder color="primary" />
+              Collections
+              {draggedCase && (
+                <Chip label="Drop targets" size="small" color="primary" />
+              )}
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: '60vh', overflow: 'auto' }}>
+              {collections.map((collection) => (
                 <Box
+                  key={collection.id}
                   onDragOver={(e) => collection.id && handleCollectionDragOver(e, collection.id)}
                   onDragLeave={handleCollectionDragLeave}
                   onDrop={(e) => collection.id && handleCollectionDrop(e, collection.id)}
+                  onClick={() => setSelectedCollectionId(collection.id || null)}
                   sx={{
                     p: 2,
-                    border: '2px dashed',
-                    borderColor: dragOverCollection === collection.id ? 'primary.main' : 'grey.300',
+                    border: '1px solid',
+                    borderColor: dragOverCollection === collection.id 
+                      ? 'primary.main' 
+                      : selectedCollectionId === collection.id 
+                      ? 'primary.main'
+                      : 'grey.300',
                     borderRadius: 2,
-                    backgroundColor: dragOverCollection === collection.id ? 'primary.50' : 'transparent',
+                    backgroundColor: dragOverCollection === collection.id 
+                      ? 'primary.50' 
+                      : selectedCollectionId === collection.id
+                      ? 'primary.50'
+                      : 'background.paper',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
+                    borderStyle: draggedCase ? 'dashed' : 'solid',
+                    borderWidth: draggedCase ? '2px' : '1px',
                     '&:hover': {
                       borderColor: 'primary.main',
                       backgroundColor: 'primary.50',
                     },
                   }}
                 >
-                  <Folder sx={{ color: collection.color || '#666' }} />
-                  <Box>
-                    <Typography variant="body2" fontWeight="medium">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Folder sx={{ color: collection.color || '#666', fontSize: 20 }} />
+                    <Typography variant="body1" fontWeight="medium" sx={{ flexGrow: 1 }}>
                       {collection.name}
                     </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {collection.case_count || 0} cases
-                    </Typography>
                   </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" color="textSecondary">
+                      {collection.case_count || 0} case{(collection.case_count || 0) !== 1 ? 's' : ''}
+                    </Typography>
+                    {collection.subcollection_count && collection.subcollection_count > 0 && (
+                      <Chip 
+                        label={`+${collection.subcollection_count} sub`} 
+                        size="small" 
+                        variant="outlined"
+                        sx={{ fontSize: '0.7rem', height: 18 }}
+                      />
+                    )}
+                  </Box>
+                  {collection.description && (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
+                      {collection.description.substring(0, 60)}
+                      {collection.description.length > 60 && '...'}
+                    </Typography>
+                  )}
                 </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
+              ))}
+              
+              {/* Quick Create Collection */}
+              <Button
+                variant="outlined"
+                startIcon={<Add />}
+                onClick={() => setShowCollectionManager(true)}
+                sx={{ mt: 1 }}
+                size="small"
+              >
+                Create Collection
+              </Button>
+            </Box>
+          </Box>
+        )}
 
-      {/* Case Studies Grid */}
-      <Grid container spacing={2}>
-        {filteredCases.map((caseStudy) => (
+        {/* Cases Grid */}
+        <Box sx={{ flexGrow: 1 }}>
+          {collections.length === 0 && (
+            <Box sx={{ mb: 3, p: 3, border: '1px dashed #ccc', borderRadius: 2, textAlign: 'center' }}>
+              <Folder sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+              <Typography variant="h6" color="textSecondary" sx={{ mb: 1 }}>
+                No Collections Yet
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Create collections to organize your case studies with drag-and-drop
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setShowCollectionManager(true)}
+              >
+                Create Your First Collection
+              </Button>
+            </Box>
+          )}
+
+          <Grid container spacing={2}>
+            {filteredCases.map((caseStudy) => (
           <Grid item xs={12} sm={6} md={4} key={caseStudy.id}>
             <Card 
               draggable={!bulkMode}
@@ -983,7 +1052,9 @@ export const LibraryView: React.FC = () => {
             </Card>
           </Grid>
         ))}
-      </Grid>
+          </Grid>
+        </Box>
+      </Box>
 
       {filteredCases.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
