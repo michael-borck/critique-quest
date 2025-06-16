@@ -4,10 +4,8 @@
   "description": "AI-Powered Case Study Generator",
   "main": "dist/main/main.js",
   "scripts": {
-    "dev": "node start-simple.js",
-    "dev-full": "node start.js",
-    "dev-old": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
-    "dev:main": "tsc -p src/main && npx electron dist/main.js",
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p src/main && electron dist/main/main.js",
     "dev:renderer": "vite",
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc -p src/main",
