@@ -14,7 +14,12 @@
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["education", "ai", "case-studies", "electron"],
+  "keywords": [
+    "education",
+    "ai",
+    "case-studies",
+    "electron"
+  ],
   "author": "CritiqueQuest",
   "license": "MIT",
   "devDependencies": {
@@ -39,14 +44,16 @@
     "@mui/icons-material": "^5.14.11",
     "@mui/material": "^5.14.11",
     "axios": "^1.5.0",
-    "node-json-db": "^2.3.0",
     "electron-store": "^8.1.0",
     "html-to-text": "^9.0.5",
     "jspdf": "^2.5.1",
     "mammoth": "^1.6.0",
+    "node-json-db": "^2.3.0",
     "openai": "^4.11.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
     "zustand": "^4.4.1"
   },
   "build": {
