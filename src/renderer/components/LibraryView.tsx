@@ -48,6 +48,7 @@ export const LibraryView: React.FC = () => {
 
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [exportFormat, setExportFormat] = useState<string>('pdf');
 
   useEffect(() => {
     loadCases();
@@ -77,9 +78,10 @@ export const LibraryView: React.FC = () => {
     }
   };
 
-  const handleExport = async (caseStudy: CaseStudy) => {
+  const handleExport = async (caseStudy: CaseStudy, format?: string) => {
     try {
-      await window.electronAPI.exportCase(caseStudy, 'pdf');
+      const formatToUse = format || exportFormat;
+      await window.electronAPI.exportCase(caseStudy, formatToUse);
     } catch (error) {
       console.error('Failed to export case:', error);
     }
@@ -115,13 +117,29 @@ export const LibraryView: React.FC = () => {
         <Typography variant="h4">
           Case Study Library
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<FilterList />}
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          Filters
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel>Export Format</InputLabel>
+            <Select
+              value={exportFormat}
+              label="Export Format"
+              onChange={(e) => setExportFormat(e.target.value)}
+            >
+              <MenuItem value="pdf">PDF</MenuItem>
+              <MenuItem value="json">JSON</MenuItem>
+              <MenuItem value="html">HTML</MenuItem>
+              <MenuItem value="text">Text</MenuItem>
+              <MenuItem value="word">Word</MenuItem>
+            </Select>
+          </FormControl>
+          <Button
+            variant="outlined"
+            startIcon={<FilterList />}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            Filters
+          </Button>
+        </Box>
       </Box>
 
       {/* Search and Filters */}
