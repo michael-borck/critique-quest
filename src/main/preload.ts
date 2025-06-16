@@ -24,6 +24,7 @@ const electronAPI = {
   importCase: (filePath: string) => ipcRenderer.invoke('file:import', filePath),
   importCaseFromURL: (url: string) => ipcRenderer.invoke('file:importFromURL', url),
   exportBulkCases: (caseStudies: CaseStudy[], format: string) => ipcRenderer.invoke('file:exportBulk', caseStudies, format),
+  exportBundle: (collections: Collection[], caseStudies: CaseStudy[], filename: string) => ipcRenderer.invoke('file:exportBundle', collections, caseStudies, filename),
   importBulkCasesFromURL: (url: string) => ipcRenderer.invoke('file:importBulkFromURL', url),
   importBulkCasesFromFile: (content: string) => ipcRenderer.invoke('file:importBulkFromFile', content),
 

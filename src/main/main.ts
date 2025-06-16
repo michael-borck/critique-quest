@@ -121,6 +121,10 @@ class Application {
       return this.fileService.importBulkCasesFromFile(content);
     });
 
+    ipcMain.handle('file:exportBundle', async (_, collections, caseStudies, filename) => {
+      return this.fileService.exportBundle(collections, caseStudies, filename);
+    });
+
     // Collection operations
     ipcMain.handle('collection:getCollections', async () => {
       return this.databaseManager.getCollections();
