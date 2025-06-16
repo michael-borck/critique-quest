@@ -108,6 +108,10 @@ class Application {
     ipcMain.handle('file:importFromURL', async (_, url) => {
       return this.fileService.importCaseFromURL(url);
     });
+
+    ipcMain.handle('file:exportBulk', async (_, caseStudies, format) => {
+      return this.fileService.exportBulkCases(caseStudies, format);
+    });
   }
 
   private async initialize(): Promise<void> {

@@ -36,6 +36,10 @@ import {
   Upload,
   Link,
   FolderOpen,
+  CheckBox,
+  CheckBoxOutlineBlank,
+  SelectAll,
+  Clear,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy } from '../../shared/types';
@@ -65,6 +69,8 @@ export const LibraryView: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedCases, setSelectedCases] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
 
   useEffect(() => {
     loadCases();
@@ -244,6 +250,48 @@ export const LibraryView: React.FC = () => {
     }
   };
 
+  const handleToggleBulkMode = () => {
+    setBulkMode(!bulkMode);
+    setSelectedCases(new Set());
+  };
+
+  const handleSelectCase = (caseId: number) => {
+    const newSelected = new Set(selectedCases);
+    if (newSelected.has(caseId)) {
+      newSelected.delete(caseId);
+    } else {
+      newSelected.add(caseId);
+    }
+    setSelectedCases(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCases.size === filteredCases.length) {
+      setSelectedCases(new Set());
+    } else {
+      setSelectedCases(new Set(filteredCases.map(c => c.id!).filter(id => id !== undefined)));
+    }
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedCases.size === 0) return;
+
+    try {
+      const selectedCaseData = cases.filter(c => c.id && selectedCases.has(c.id));
+      await window.electronAPI.exportBulkCases(selectedCaseData, exportFormat);
+      
+      // Show success message and exit bulk mode
+      setImportSuccess(`Successfully exported ${selectedCases.size} case studies as collection`);
+      setBulkMode(false);
+      setSelectedCases(new Set());
+      
+      setTimeout(() => setImportSuccess(null), 3000);
+    } catch (error) {
+      setImportError(`Failed to export cases: ${error}`);
+      setTimeout(() => setImportError(null), 5000);
+    }
+  };
+
   const filteredCases = cases.filter((caseStudy) => {
     if (searchQuery && !caseStudy.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !caseStudy.content.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -293,39 +341,84 @@ export const LibraryView: React.FC = () => {
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Case Study Library
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="h4">
+            Case Study Library
+          </Typography>
+          {bulkMode && (
+            <Typography variant="body2" color="primary">
+              {selectedCases.size} selected
+            </Typography>
+          )}
+        </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<Upload />}
-            onClick={() => setShowImportDialog(true)}
-          >
-            Import
-          </Button>
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel>Export Format</InputLabel>
-            <Select
-              value={exportFormat}
-              label="Export Format"
-              onChange={(e) => setExportFormat(e.target.value)}
-            >
-              <MenuItem value="pdf">PDF</MenuItem>
-              <MenuItem value="json">JSON</MenuItem>
-              <MenuItem value="markdown">Markdown</MenuItem>
-              <MenuItem value="html">HTML</MenuItem>
-              <MenuItem value="text">Text</MenuItem>
-              <MenuItem value="word">Word</MenuItem>
-            </Select>
-          </FormControl>
-          <Button
-            variant="outlined"
-            startIcon={<FilterList />}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            Filters
-          </Button>
+          {bulkMode ? (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<SelectAll />}
+                onClick={handleSelectAll}
+                size="small"
+              >
+                {selectedCases.size === filteredCases.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<GetApp />}
+                onClick={handleBulkExport}
+                disabled={selectedCases.size === 0}
+              >
+                Export {selectedCases.size} Cases
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Clear />}
+                onClick={handleToggleBulkMode}
+                size="small"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<CheckBox />}
+                onClick={handleToggleBulkMode}
+              >
+                Bulk Select
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Upload />}
+                onClick={() => setShowImportDialog(true)}
+              >
+                Import
+              </Button>
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel>Export Format</InputLabel>
+                <Select
+                  value={exportFormat}
+                  label="Export Format"
+                  onChange={(e) => setExportFormat(e.target.value)}
+                >
+                  <MenuItem value="pdf">PDF</MenuItem>
+                  <MenuItem value="json">JSON</MenuItem>
+                  <MenuItem value="markdown">Markdown</MenuItem>
+                  <MenuItem value="html">HTML</MenuItem>
+                  <MenuItem value="text">Text</MenuItem>
+                  <MenuItem value="word">Word</MenuItem>
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                startIcon={<FilterList />}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                Filters
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
 
@@ -462,23 +555,42 @@ export const LibraryView: React.FC = () => {
                 display: 'flex', 
                 flexDirection: 'column',
                 cursor: 'pointer',
+                border: bulkMode && caseStudy.id && selectedCases.has(caseStudy.id) ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                backgroundColor: bulkMode && caseStudy.id && selectedCases.has(caseStudy.id) ? 'rgba(25, 118, 210, 0.05)' : 'inherit',
               }}
-              onClick={() => setSelectedCase(caseStudy)}
+              onClick={() => bulkMode && caseStudy.id ? handleSelectCase(caseStudy.id) : setSelectedCase(caseStudy)}
             >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                  {bulkMode && (
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (caseStudy.id) handleSelectCase(caseStudy.id);
+                      }}
+                      sx={{ mr: 1 }}
+                    >
+                      {caseStudy.id && selectedCases.has(caseStudy.id) ? 
+                        <CheckBox color="primary" /> : 
+                        <CheckBoxOutlineBlank />
+                      }
+                    </IconButton>
+                  )}
                   <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
                     {caseStudy.title}
                   </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleFavorite(caseStudy);
-                    }}
-                  >
-                    {caseStudy.is_favorite ? <Star color="primary" /> : <StarBorder />}
-                  </IconButton>
+                  {!bulkMode && (
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFavorite(caseStudy);
+                      }}
+                    >
+                      {caseStudy.is_favorite ? <Star color="primary" /> : <StarBorder />}
+                    </IconButton>
+                  )}
                 </Box>
 
                 <Box sx={{ mb: 2 }}>
