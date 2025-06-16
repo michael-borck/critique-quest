@@ -475,7 +475,7 @@ export const SettingsView: React.FC = () => {
             </Typography>
 
             <Alert severity="info" sx={{ mb: 3 }}>
-              ScenarioForge stores all your data locally on your device. No data is sent to our servers.
+              CritiqueQuest stores all your data locally on your device. No data is sent to our servers.
             </Alert>
 
             <Box sx={{ mb: 3 }}>

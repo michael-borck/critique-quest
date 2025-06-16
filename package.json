@@ -1,5 +1,5 @@
 {
-  "name": "scenario-forge",
+  "name": "critique-quest",
   "version": "1.0.0",
   "description": "AI-Powered Case Study Generator",
   "main": "dist/main/main.js",
@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": ["education", "ai", "case-studies", "electron"],
-  "author": "ScenarioForge",
+  "author": "CritiqueQuest",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.8.0",
@@ -52,8 +52,8 @@
     "zustand": "^4.4.1"
   },
   "build": {
-    "appId": "com.scenarioforge.app",
-    "productName": "ScenarioForge",
+    "appId": "com.critiquequest.app",
+    "productName": "CritiqueQuest",
     "directories": {
       "output": "release"
     },

@@ -3,7 +3,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-console.log('🚀 Starting ScenarioForge MVP...\n');
+console.log('🚀 Starting CritiqueQuest MVP...\n');
 
 // Start the renderer (Vite dev server)
 console.log('📱 Starting React development server...');

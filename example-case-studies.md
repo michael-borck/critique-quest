@@ -1,4 +1,4 @@
-# Example Case Studies for ScenarioForge
+# Example Case Studies for CritiqueQuest
 
 ## 1. Tech Startup Decision-Making
 
@@ -118,7 +118,7 @@
 
 ## Using These Examples
 
-1. Navigate to the **Generate** section in ScenarioForge
+1. Navigate to the **Generate** section in CritiqueQuest
 2. Copy the configuration settings from any example above
 3. Paste the context into the Context field
 4. Adjust other parameters as needed

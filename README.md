@@ -1,4 +1,6 @@
-# ScenarioForge
+# CritiqueQuest
+
+*Every case, a new discovery*
 
 Desktop application for generating AI-powered educational case studies with support for OpenAI, Anthropic, Google Gemini, and local Ollama models.
 
@@ -9,7 +11,9 @@ Desktop application for generating AI-powered educational case studies with supp
 
 ## 🎯 Overview
 
-ScenarioForge empowers educators and learners to create high-quality, AI-generated case studies for educational purposes. With support for both cloud-based AI services and local models through Ollama, it offers flexibility between convenience and complete privacy.
+CritiqueQuest empowers educators and students to create high-quality, AI-generated case studies for educational purposes. Whether you're a lecturer developing engaging scenarios for your students or a student practicing critical thinking skills, CritiqueQuest transforms learning concepts into compelling case studies in minutes.
+
+With support for both cloud-based AI services and local models through Ollama, it offers flexibility between convenience and complete privacy.
 
 ### ✨ Key Features
 
@@ -20,6 +24,20 @@ ScenarioForge empowers educators and learners to create high-quality, AI-generat
 - **📄 Multiple Export Formats** - PDF, Word, HTML, and plain text
 - **🎨 Intuitive Interface** - Material-UI components with professional design
 - **💾 Offline-First** - Works without internet (with local AI models)
+
+## 👥 Perfect For
+
+### 📚 Educators & Lecturers
+- Create engaging case studies for any subject area
+- Generate scenarios with varying complexity levels
+- Export content for course materials and assignments
+- Build comprehensive case study libraries
+
+### 🎓 Students & Learners
+- Practice critical thinking with AI-generated scenarios
+- Self-assess understanding through guided practice mode
+- Create study materials for exam preparation
+- Develop analytical skills across different domains
 
 ## 🚀 Quick Start
 
@@ -32,8 +50,8 @@ ScenarioForge empowers educators and learners to create high-quality, AI-generat
 
 ```bash
 # Clone the repository
-git clone https://github.com/michael-borck/scenario-forge.git
-cd scenario-forge
+git clone https://github.com/michael-borck/critiquequest.git
+cd critiquequest
 
 # Install dependencies
 npm install
@@ -57,9 +75,9 @@ npm run dev
 
 1. Click **Generate** in the sidebar
 2. Configure your case study:
-   - **Domain**: Business, Technology, Healthcare, etc.
+   - **Domain**: Business, Technology, Healthcare, Education, etc.
    - **Complexity**: Beginner, Intermediate, or Advanced
-   - **Scenario Type**: Problem-solving, Decision-making, etc.
+   - **Scenario Type**: Problem-solving, Decision-making, Ethical dilemmas
    - **Context**: Describe the scenario setting
 3. Click **Generate Case Study**
 4. Review and save the generated content
@@ -69,7 +87,7 @@ npm run dev
 - **Search** across all case studies
 - **Filter** by domain, complexity, or favorites
 - **Tag** content for better organization
-- **Export** in multiple formats
+- **Export** in multiple formats for sharing or printing
 
 ### Practice Mode
 
@@ -104,7 +122,7 @@ ollama pull llama2
 # Start Ollama service
 ollama serve
 
-# Configure in ScenarioForge Settings
+# Configure in CritiqueQuest Settings
 ```
 
 See [OLLAMA_SETUP.md](OLLAMA_SETUP.md) for detailed instructions.
@@ -112,7 +130,7 @@ See [OLLAMA_SETUP.md](OLLAMA_SETUP.md) for detailed instructions.
 ## 🏗️ Architecture
 
 ```
-scenario-forge/
+critiquequest/
 ├── src/
 │   ├── main/           # Electron main process
 │   │   ├── database.ts # Local JSON database
@@ -173,13 +191,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Material-UI](https://mui.com/) - Component library
 - [Ollama](https://ollama.ai/) - Local AI model support
 - [OpenAI](https://openai.com/) - GPT models
-- All contributors and users of ScenarioForge
+- All contributors and users of CritiqueQuest
 
 ## 📞 Support
 
 - **Documentation**: Check the `/docs` folder
-- **Issues**: [GitHub Issues](https://github.com/michael-borck/scenario-forge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/michael-borck/scenario-forge/discussions)
+- **Issues**: [GitHub Issues](https://github.com/michael-borck/critiquequest/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/michael-borck/critiquequest/discussions)
 
 ---
 

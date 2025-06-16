@@ -91,7 +91,7 @@ const App: React.FC = () => {
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            ScenarioForge
+            CritiqueQuest
           </Typography>
           <Chip
             label={aiStatus === 'connected' ? 'AI: Connected' : 'AI: Offline'}
@@ -111,6 +111,9 @@ const App: React.FC = () => {
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
+            backgroundColor: '#1F2937',
+            color: 'white',
+            borderRight: '1px solid #374151',
           },
         }}
       >
@@ -127,6 +130,14 @@ const App: React.FC = () => {
                 sx={{
                   borderRadius: 1,
                   mb: 0.5,
+                  color: currentView === item.id ? 'white' : '#D1D5DB',
+                  backgroundColor: currentView === item.id ? '#2563EB' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: currentView === item.id ? '#2563EB' : '#374151',
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: currentView === item.id ? 'white' : '#D1D5DB',
+                  },
                 }}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>
@@ -135,30 +146,30 @@ const App: React.FC = () => {
             ))}
           </List>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 2, borderColor: '#374151' }} />
 
           {/* Quick Stats */}
           <Box sx={{ px: 2 }}>
-            <Typography variant="caption" color="textSecondary">
+            <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
               Library
             </Typography>
             <List dense>
               <ListItem>
-                <ListItemIcon sx={{ minWidth: 32 }}>
+                <ListItemIcon sx={{ minWidth: 32, color: '#D1D5DB' }}>
                   <LibraryBooks fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
                   primary={`${cases.length} Cases`}
-                  primaryTypographyProps={{ variant: 'body2' }}
+                  primaryTypographyProps={{ variant: 'body2', style: { color: '#D1D5DB' } }}
                 />
               </ListItem>
               <ListItem>
-                <ListItemIcon sx={{ minWidth: 32 }}>
+                <ListItemIcon sx={{ minWidth: 32, color: '#D1D5DB' }}>
                   <Star fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
                   primary={`${cases.filter(c => c.is_favorite).length} Favorites`}
-                  primaryTypographyProps={{ variant: 'body2' }}
+                  primaryTypographyProps={{ variant: 'body2', style: { color: '#D1D5DB' } }}
                 />
               </ListItem>
             </List>
@@ -168,7 +179,7 @@ const App: React.FC = () => {
 
           {/* Recent Tags */}
           <Box sx={{ px: 2 }}>
-            <Typography variant="caption" color="textSecondary" sx={{ mb: 1, display: 'block' }}>
+            <Typography variant="caption" sx={{ mb: 1, display: 'block', color: '#9CA3AF' }}>
               Recent Tags
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>

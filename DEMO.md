@@ -1,16 +1,18 @@
-# ScenarioForge MVP - Demo Guide
+# CritiqueQuest MVP - Demo Guide
+
+*Every case, a new discovery*
 
 ## ✅ Implementation Complete
 
-The ScenarioForge MVP has been fully implemented according to the Software Requirements Specification. Here's what has been built:
+The CritiqueQuest MVP has been fully implemented according to the Software Requirements Specification. Here's what has been built to empower both educators and students in their analytical journey:
 
 ## 🏗️ Architecture Overview
 
 ```
-ScenarioForge MVP
+CritiqueQuest MVP
 ├── Electron Main Process (Backend)
 │   ├── 📁 Database Layer (JSON-based for MVP)
-│   ├── 🤖 AI Service (OpenAI, Google, Anthropic)
+│   ├── 🤖 AI Service (OpenAI, Google, Anthropic, Ollama)
 │   ├── 📄 File Export System (PDF, Word, HTML, Text)
 │   └── ⚙️ System Integration
 └── React Renderer Process (Frontend)
@@ -23,42 +25,47 @@ ScenarioForge MVP
 ## 🌟 Key Features Implemented
 
 ### 1. AI-Powered Case Study Generation
-- **Multi-Provider Support**: OpenAI GPT-4, Google Gemini, Anthropic Claude
+- **Multi-Provider Support**: OpenAI GPT-4, Google Gemini, Anthropic Claude, Ollama (local)
 - **Structured Input System**: Domain, complexity, scenario type configuration
 - **Content Elements**: Configurable sections (summary, background, questions, etc.)
-- **Smart Prompting**: Advanced prompt engineering for quality content
+- **Smart Prompting**: Advanced prompt engineering for quality educational content
 - **Quality Control**: Automated validation and improvement suggestions
+- **Privacy Options**: Choose between cloud AI convenience or local AI privacy
 
 ### 2. Local Content Management
 - **JSON Database**: Fast, lightweight local storage
 - **Search & Filter**: Full-text search with domain/complexity filters
 - **Tagging System**: Custom organization with tags
-- **Favorites**: Star important case studies
+- **Favorites**: Star important case studies for quick access
 - **Metadata Tracking**: Usage statistics, word counts, timestamps
+- **Content Library**: Perfect for building course materials or study collections
 
-### 3. Practice Mode
+### 3. Practice Mode - *Your Quest for Critical Thinking*
 - **Step-by-Step Workflow**: Guided question progression
-- **Timer Integration**: Optional time tracking
-- **Note-Taking**: Built-in note editor
+- **Timer Integration**: Optional time tracking for assessments
+- **Note-Taking**: Built-in note editor for reflection
 - **Model Answers**: Compare with AI-generated solutions
 - **Progress Tracking**: Session history and completion rates
+- **Self-Assessment**: Ideal for students preparing for exams or developing analytical skills
 
-### 4. Export System
+### 4. Export System - *Share Your Discoveries*
 - **Multiple Formats**: PDF, Word (RTF), HTML, Plain Text
-- **Professional Formatting**: Clean, printable layouts
-- **Batch Export**: Export multiple case studies
-- **Custom Styling**: Branded templates
+- **Professional Formatting**: Clean, printable layouts for course materials
+- **Batch Export**: Export multiple case studies for curriculum packages
+- **Custom Styling**: Branded templates for institutional use
 
-### 5. User Interface
+### 5. User Interface - *Intuitive for All Users*
 - **Sidebar Navigation**: Library stats and quick access
 - **Generation Form**: Intuitive configuration panel
-- **Settings Panel**: AI provider configuration
+- **Settings Panel**: AI provider configuration with privacy options
 - **Responsive Design**: Works on various screen sizes
+- **Educator-Friendly**: Easy content creation and management
+- **Student-Friendly**: Clear learning pathways and progress tracking
 
 ## 📁 File Structure
 
 ```
-scenario-forge/
+critiquequest/
 ├── src/
 │   ├── main/                    # Electron Backend
 │   │   ├── main.ts              # App entry point
@@ -92,24 +99,26 @@ scenario-forge/
 - **Full Schema**: Cases, preferences, AI usage, practice sessions
 - **Type Safety**: Complete TypeScript integration
 - **Search**: Efficient filtering and full-text search
+- **Educational Data**: Tracks learning progress and content organization
 
 ### AI Integration (`src/main/ai-service.ts`)
-- **OpenAI GPT-4**: Primary AI provider with robust error handling
-- **Prompt Engineering**: Advanced prompt construction for quality
+- **Multi-Provider Support**: OpenAI GPT-4, Google Gemini, Anthropic Claude, Ollama
+- **Educational Prompt Engineering**: Specialized prompts for case study generation
 - **Response Parsing**: Intelligent content extraction and formatting
 - **Cost Tracking**: Token usage and cost estimation
+- **Privacy Controls**: Local vs. cloud AI options
 
 ### Export System (`src/main/file-service.ts`)
-- **PDF Generation**: Using jsPDF with custom layouts
-- **Word Export**: RTF format for compatibility
-- **HTML Export**: Web-ready with embedded CSS
-- **Text Export**: Plain text with formatting
+- **PDF Generation**: Using jsPDF with custom layouts for course materials
+- **Word Export**: RTF format for compatibility with institutional systems
+- **HTML Export**: Web-ready with embedded CSS for online sharing
+- **Text Export**: Plain text with formatting for accessibility
 
 ### UI Components (`src/renderer/components/`)
-- **GenerationView**: Comprehensive case study creation form
-- **LibraryView**: Grid-based content browser with search
-- **PracticeView**: Stepper-based learning interface
-- **SettingsView**: Tabbed configuration panel
+- **GenerationView**: Comprehensive case study creation form for educators
+- **LibraryView**: Grid-based content browser with search for content management
+- **PracticeView**: Stepper-based learning interface for student assessment
+- **SettingsView**: Tabbed configuration panel with privacy options
 
 ## 🚀 Development Commands
 
@@ -136,70 +145,98 @@ npm run lint
 ## 🎯 MVP Success Criteria Met
 
 ✅ **Core Functionality**
-- AI-powered case study generation
-- Local content library with search
-- Practice mode for self-assessment
-- Multi-format export capabilities
+- AI-powered case study generation for educators
+- Local content library with search and organization
+- Practice mode for student self-assessment
+- Multi-format export capabilities for course materials
+
+✅ **Educational Focus**
+- Dual-purpose design serving both educators and students
+- Quality content generation suitable for academic use
+- Privacy options for sensitive educational content
+- Progress tracking and learning analytics
 
 ✅ **Technical Requirements**
 - Electron + React + TypeScript architecture
 - Local data storage (JSON database)
-- Multi-provider AI integration
-- Quality control and validation
+- Multi-provider AI integration including local options
+- Quality control and validation for educational content
 
 ✅ **User Experience**
 - Intuitive interface requiring no tutorials
-- Responsive design for different screen sizes
+- Responsive design for different devices and settings
 - Comprehensive settings and preferences
 - Error handling and user feedback
+- Accessible to both technical and non-technical users
 
 ✅ **Performance & Reliability**
 - Fast local operations
-- Offline-first design
+- Offline-first design (with local AI)
 - Graceful AI service degradation
 - Type-safe codebase
 
 ## 🔮 Future Enhancements
 
-The MVP is designed for easy extension:
+The MVP is designed for easy extension to serve the growing educational community:
 
-### Version 2.0 Roadmap
+### Version 2.0 Roadmap - *Expanding the Quest*
 - SQLite database migration for better performance
-- Local AI model support (Ollama integration)
+- Enhanced Ollama integration with more local models
 - Advanced analytics and learning insights
-- Content templates and industry-specific scenarios
+- Content templates and subject-specific scenarios
+- Collaboration features for educator teams
 
-### Version 3.0 Roadmap
-- Multi-user collaboration features
-- Cloud synchronization options
-- LMS integration capabilities
-- Advanced administrative tools
+### Version 3.0 Roadmap - *Educational Ecosystem*
+- LMS integration (Moodle, Canvas, Blackboard)
+- Student-teacher sharing and assignment features
+- Institutional deployment tools
+- Advanced assessment and grading capabilities
+- Multi-language support for global education
+
+### Version 4.0 Roadmap - *AI-Enhanced Learning*
+- Adaptive learning pathways
+- Real-time difficulty adjustment
+- Personalized content recommendations
+- Advanced analytics dashboard for educators
+- Integration with educational standards and curricula
 
 ## 🛠️ Installation Notes
 
-The application is production-ready but may require system-specific adjustments:
+The application is production-ready for educational environments:
 
-1. **Native Dependencies**: Some dependencies (like SQLite) may need compilation
+1. **Native Dependencies**: Cross-platform compatibility tested
 2. **Development Setup**: Node.js 18+ recommended
 3. **Platform Support**: Windows, macOS, Linux compatible
-4. **AI API Keys**: Required for generation functionality
+4. **AI Configuration**: Supports both cloud and local AI options
+5. **Institutional Deployment**: Suitable for campus-wide installation
 
 ## 📖 Usage Guide
 
-1. **Setup**: Configure AI API keys in Settings
-2. **Generate**: Use the Generation view to create case studies
-3. **Organize**: Save and tag content in the Library
-4. **Practice**: Use Practice mode for self-assessment
-5. **Export**: Share content in multiple formats
+### For Educators
+1. **Setup**: Configure AI preferences (cloud or local for privacy)
+2. **Generate**: Create case studies for your curriculum
+3. **Organize**: Build subject-specific libraries with tags
+4. **Export**: Share content with students in multiple formats
+5. **Track**: Monitor usage and popular content
+
+### For Students
+1. **Access**: Receive case studies from instructors or create your own
+2. **Practice**: Use Practice mode for self-assessment
+3. **Learn**: Progress through scenarios with guided analysis
+4. **Reflect**: Take notes and track your analytical development
+5. **Export**: Create study materials and portfolio pieces
 
 ## 🎉 Conclusion
 
-The ScenarioForge MVP successfully implements all requirements from the SRS document:
+The CritiqueQuest MVP successfully implements all requirements from the SRS document with a strong educational focus:
 
-- ✅ **Individual empowerment** over institutional management
-- ✅ **Core functionality excellence** over feature breadth  
-- ✅ **Local autonomy** over cloud dependencies
-- ✅ **Immediate value** over complex workflows
-- ✅ **Learning by doing** over administrative oversight
+- ✅ **Individual empowerment** over institutional complexity
+- ✅ **Core educational functionality** over feature bloat  
+- ✅ **Local autonomy** with privacy options over cloud dependencies
+- ✅ **Immediate learning value** over complex administrative workflows
+- ✅ **Learning by discovery** over passive content consumption
+- ✅ **Dual-purpose design** serving both educators and students
 
-The application is ready for beta testing and user feedback to guide future development phases.
+*Every case study generated is truly a new discovery, whether you're creating engaging content for students or developing your own critical thinking skills.*
+
+The application is ready for beta testing with educational institutions and individual users to guide future development phases that will further enhance the analytical learning journey.

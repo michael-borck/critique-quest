@@ -1,4 +1,4 @@
-# ScenarioForge MVP: Software Requirements Specification
+# CritiqueQuest MVP: Software Requirements Specification
 **Version 1.0 - MVP/Proof of Concept**  
 **Standalone AI-Powered Case Study Generator**
 
@@ -23,7 +23,7 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
-ScenarioForge MVP is a standalone desktop application that empowers individual educators and learners to generate high-quality, AI-powered case studies and scenarios. This proof-of-concept version focuses on core value delivery with minimal complexity, serving as both a useful tool and a foundation for future enhancements.
+CritiqueQuest MVP is a standalone desktop application that empowers individual educators and learners to generate high-quality, AI-powered case studies and scenarios. This proof-of-concept version focuses on core value delivery with minimal complexity, serving as both a useful tool and a foundation for future enhancements.
 
 ### 1.2 MVP Philosophy
 **"Perfect for one, before perfect for many"**
@@ -310,7 +310,7 @@ CREATE TABLE practice_sessions (
 
 #### 6.2.1 Local Storage Structure
 ```
-ScenarioForge/
+CritiqueQuest/
 ├── database/
 │   ├── scenarios.db
 │   └── backups/
@@ -585,7 +585,7 @@ Renderer Process (React)
 
 ## Conclusion
 
-ScenarioForge MVP represents a focused, high-value solution that addresses the core need for AI-powered case study generation while maintaining simplicity and local autonomy. By concentrating on individual user empowerment rather than institutional complexity, the MVP can deliver immediate value while establishing a solid foundation for future growth.
+CritiqueQuest MVP represents a focused, high-value solution that addresses the core need for AI-powered case study generation while maintaining simplicity and local autonomy. By concentrating on individual user empowerment rather than institutional complexity, the MVP can deliver immediate value while establishing a solid foundation for future growth.
 
 The standalone approach ensures users have complete control over their content and workflow, while the extensible architecture allows for natural evolution toward more collaborative and institutional features as market demand develops.
 

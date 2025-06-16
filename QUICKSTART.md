@@ -1,4 +1,6 @@
-# 🚀 ScenarioForge - Quick Start Guide
+# 🚀 CritiqueQuest - Quick Start Guide
+
+*Every case, a new discovery*
 
 ## Prerequisites
 
@@ -9,7 +11,7 @@
 
 1. **Navigate to the project directory:**
    ```bash
-   cd scenario-forge
+   cd critiquequest
    ```
 
 2. **Install dependencies:**
@@ -58,93 +60,166 @@ npm run dist
 
 1. **Launch the application** using one of the methods above
 2. **Go to Settings** (gear icon in sidebar)
-3. **Add your AI API key:**
-   - OpenAI: Get from https://platform.openai.com/api-keys
-   - Google: Get from https://ai.google.dev/
-   - Anthropic: Get from https://console.anthropic.com/
+3. **Choose your AI approach:**
+
+### Option A: Cloud AI (Quick Start)
+   - **OpenAI**: Get API key from https://platform.openai.com/api-keys
+   - **Google**: Get API key from https://ai.google.dev/
+   - **Anthropic**: Get API key from https://console.anthropic.com/
+   - Enter your chosen API key in Settings → AI Configuration
+
+### Option B: Local AI (Privacy-First)
+   - Install [Ollama](https://ollama.ai) on your system
+   - Pull a model: `ollama pull llama2` (or `mistral`, `codellama`)
+   - Start Ollama service: `ollama serve`
+   - In CritiqueQuest Settings, select "Ollama" as provider
+
 4. **Configure default settings** (optional)
 
-## Using ScenarioForge
+## Using CritiqueQuest
 
-### Generate Your First Case Study
+### 📚 For Educators: Create Your First Case Study
+
 1. Click **"Generate"** in the sidebar
-2. Fill in the form:
-   - **Domain**: Choose your subject area
-   - **Complexity**: Select difficulty level
-   - **Context**: Describe the scenario setting
+2. Configure your educational scenario:
+   - **Domain**: Choose your subject area (Business, Healthcare, Technology, etc.)
+   - **Complexity**: Select appropriate difficulty for your students
+   - **Scenario Type**: Problem-solving, Decision-making, Ethical dilemma
+   - **Context**: Describe the learning objectives and scenario setting
 3. Click **"Generate Case Study"**
-4. Review and save the result
+4. Review the generated content for educational quality
+5. Save to your library with appropriate tags
+6. Export for course materials (PDF, Word, HTML)
 
-### Organize Your Library
-1. Click **"Library"** to view saved case studies
-2. Use search and filters to find content
-3. Star favorites and add tags
-4. Export to PDF, Word, or other formats
+### 🎓 For Students: Begin Your Discovery Journey
 
-### Practice with Case Studies
-1. Select a case study from your library
-2. Click **"Practice"** 
-3. Work through questions step-by-step
-4. Compare with model answers
-5. Track your progress
+1. **Access Content**: 
+   - Import case studies from your instructor, or
+   - Generate your own practice scenarios
+2. **Organize**: Use the Library to manage your learning materials
+3. **Practice**: Click "Practice" on any case study to begin self-assessment
+4. **Learn**: Work through guided questions and compare with model answers
+5. **Track Progress**: Review your analytical development over time
+
+## Your First Discovery Session
+
+### Quick Tutorial: Generate a Sample Case Study
+
+1. **Navigate to Generate** 
+2. **Try these sample settings:**
+   - Domain: "Business Ethics"
+   - Complexity: "Intermediate" 
+   - Context: "A mid-sized tech company facing a privacy dilemma"
+3. **Generate and explore** the structured case study
+4. **Save to Library** and add tags like "ethics" and "technology"
+5. **Enter Practice Mode** to experience the self-assessment flow
+
+### Organize Your Learning Library
+
+1. Click **"Library"** to view your saved case studies
+2. **Search and filter** to find content quickly
+3. **Star favorites** for easy access
+4. **Add custom tags** for better organization
+5. **Export collections** in your preferred format
+
+### Experience Practice Mode
+
+1. Select any case study from your library
+2. Click **"Practice"** to start your analytical journey
+3. **Work through questions** step-by-step with optional timer
+4. **Take notes** using the built-in editor
+5. **Compare insights** with AI-generated model answers
+6. **Track your progress** and reflection over time
 
 ## Troubleshooting
 
 ### Common Issues
 
 **Application won't start:**
-- Ensure Node.js 18+ is installed
-- Try `npm install` again
-- Check for error messages in terminal
+- Ensure Node.js 18+ is installed: `node --version`
+- Try `npm install` again to refresh dependencies
+- Check terminal for specific error messages
 
 **AI generation fails:**
-- Verify API key is correctly entered in Settings
-- Check internet connection
-- Ensure you have API credits/quota
+- **Cloud AI**: Verify API key is correctly entered in Settings
+- **Local AI**: Ensure Ollama is running (`ollama serve`) and model is pulled
+- Check internet connection for cloud providers
+- Verify you have API credits/quota remaining
 
 **Build errors:**
 - Run `npm run build` to check for TypeScript errors
 - Try deleting `node_modules` and running `npm install` again
+- Ensure all dependencies are compatible
 
 ### Getting Help
 
-1. Check the console output for error messages
-2. Verify all dependencies installed correctly
-3. Ensure your API keys are valid and have quota
+1. **Check console output** for detailed error messages
+2. **Verify AI configuration** in Settings panel
+3. **Test with different AI providers** if one fails
+4. **Review documentation** in the `/docs` folder
 
 ## Development Commands
 
 ```bash
-# Development mode
+# Development mode (hot reload)
 npm run dev
 
-# Build application
+# Build application for production
 npm run build
 
-# Type checking
+# Type checking only
 npm run typecheck
 
-# Linting
+# Code linting
 npm run lint
 
-# Create distribution
+# Create distribution packages
 npm run dist
 ```
 
-## Next Steps
+## Advanced Setup
 
-1. **Generate sample content** to test the system
-2. **Explore export options** for sharing
-3. **Use practice mode** for self-assessment
-4. **Customize settings** for your workflow
+### For Educational Institutions
+
+- **Privacy Considerations**: Use local AI (Ollama) for sensitive content
+- **Batch Deployment**: Configure default settings in institution package
+- **Content Sharing**: Set up shared network drives for case study libraries
+- **Assessment Integration**: Export to formats compatible with your LMS
+
+### For Individual Learners
+
+- **Study Groups**: Share case studies via export/import
+- **Exam Preparation**: Create subject-specific practice libraries  
+- **Skill Development**: Track progress across different domains
+- **Portfolio Building**: Export your best analytical work
+
+## Next Steps - Begin Your Quest
+
+1. **🎯 Set Learning Goals**: Identify subjects or skills you want to develop
+2. **📚 Build Your Library**: Generate or import relevant case studies
+3. **🏃‍♂️ Start Practicing**: Use Practice Mode for regular skill development
+4. **📈 Track Progress**: Monitor your analytical growth over time
+5. **🤝 Share Discoveries**: Export and discuss insights with peers or students
 
 ## Features Overview
 
-✅ **AI-Powered Generation** - Create case studies with GPT-4, Gemini, or Claude  
-✅ **Local Storage** - All data stays on your device  
-✅ **Search & Filter** - Find content quickly  
-✅ **Practice Mode** - Self-assessment with timers  
-✅ **Export Options** - PDF, Word, HTML, Text  
-✅ **Quality Control** - Automated validation  
+✅ **AI-Powered Generation** - Create case studies with GPT-4, Gemini, Claude, or local models  
+✅ **Privacy Options** - Choose between cloud convenience or local privacy  
+✅ **Educational Focus** - Designed for both teaching and learning  
+✅ **Practice Mode** - Self-assessment with guided analysis  
+✅ **Export Flexibility** - PDF, Word, HTML, Text formats  
+✅ **Quality Control** - Automated validation for educational content  
+✅ **Progress Tracking** - Monitor learning journey and development  
 
-Ready to transform learning concepts into engaging scenarios! 🎓
+## Quick Reference: AI Provider Setup
+
+| Provider | Setup Steps | Best For |
+|----------|-------------|----------|
+| **OpenAI** | Get API key → Enter in Settings | General educational content |
+| **Google Gemini** | Get API key → Configure in Settings | Research-heavy scenarios |
+| **Anthropic Claude** | Get API key → Add to Settings | Ethical reasoning, analysis |
+| **Ollama (Local)** | Install → Pull model → Start service | Privacy-sensitive content |
+
+---
+
+**Ready to embark on your analytical journey?** Every case study awaits as a new discovery! 🎓✨
