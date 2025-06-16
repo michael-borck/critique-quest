@@ -47,6 +47,7 @@ import type { CaseStudy } from '../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CollectionSelector } from './CollectionSelector';
 import { CollectionManager } from './CollectionManager';
+import { CollectionAssignmentDialog } from './CollectionAssignmentDialog';
 
 export const LibraryView: React.FC = () => {
   const {
@@ -83,6 +84,8 @@ export const LibraryView: React.FC = () => {
   const [bulkMode, setBulkMode] = useState(false);
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const [collectionFilteredCases, setCollectionFilteredCases] = useState<CaseStudy[]>([]);
+  const [showCollectionAssignment, setShowCollectionAssignment] = useState(false);
+  const [casesForAssignment, setCasesForAssignment] = useState<CaseStudy[]>([]);
 
   useEffect(() => {
     loadCases();
@@ -367,6 +370,27 @@ export const LibraryView: React.FC = () => {
     }
   };
 
+  const handleAssignToCollections = (caseStudy: CaseStudy) => {
+    setCasesForAssignment([caseStudy]);
+    setShowCollectionAssignment(true);
+  };
+
+  const handleBulkAssignToCollections = () => {
+    const selectedCaseData = cases.filter(c => c.id && selectedCases.has(c.id));
+    setCasesForAssignment(selectedCaseData);
+    setShowCollectionAssignment(true);
+  };
+
+  const handleCollectionAssignmentSuccess = () => {
+    // Reload cases and collections to reflect changes
+    loadCases();
+    loadCollections();
+    
+    // Show success message
+    setImportSuccess('Collection assignments updated successfully');
+    setTimeout(() => setImportSuccess(null), 3000);
+  };
+
   const getBaseCases = () => {
     // Determine which cases to use based on collection selection
     if (selectedCollectionId && typeof selectedCollectionId === 'number') {
@@ -460,6 +484,14 @@ export const LibraryView: React.FC = () => {
                 disabled={selectedCases.size === 0}
               >
                 Export {selectedCases.size} Cases
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Folder />}
+                onClick={handleBulkAssignToCollections}
+                disabled={selectedCases.size === 0}
+              >
+                Assign to Collections
               </Button>
               <Button
                 variant="outlined"
@@ -758,6 +790,16 @@ export const LibraryView: React.FC = () => {
                 >
                   Export
                 </Button>
+                <Button
+                  size="small"
+                  startIcon={<Folder />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAssignToCollections(caseStudy);
+                  }}
+                >
+                  Collections
+                </Button>
                 <IconButton
                   size="small"
                   onClick={(e) => {
@@ -819,6 +861,16 @@ export const LibraryView: React.FC = () => {
               <Button onClick={() => setSelectedCase(null)}>Close</Button>
               <Button onClick={() => handleExport(selectedCase)} startIcon={<GetApp />}>
                 Export
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedCase) {
+                    handleAssignToCollections(selectedCase);
+                  }
+                }} 
+                startIcon={<Folder />}
+              >
+                Collections
               </Button>
               <Button 
                 onClick={() => {
@@ -957,6 +1009,14 @@ export const LibraryView: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Collection Assignment Dialog */}
+      <CollectionAssignmentDialog
+        open={showCollectionAssignment}
+        onClose={() => setShowCollectionAssignment(false)}
+        caseStudies={casesForAssignment}
+        onSuccess={handleCollectionAssignmentSuccess}
+      />
     </Box>
   );
 };
