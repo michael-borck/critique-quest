@@ -31,13 +31,20 @@ type View = 'generation' | 'library' | 'practice' | 'settings';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('generation');
-  const { cases, aiStatus, loadPreferences, loadCollections } = useAppStore();
+  const { cases, aiStatus, preferences, loadPreferences, loadCollections } = useAppStore();
 
   useEffect(() => {
     // Load preferences and collections on app startup
     loadPreferences();
     loadCollections();
   }, []); // Run only once on mount
+
+  // Set initial view based on user preferences
+  useEffect(() => {
+    if (preferences?.default_home_page) {
+      setCurrentView(preferences.default_home_page as View);
+    }
+  }, [preferences]);
 
   const renderView = () => {
     switch (currentView) {

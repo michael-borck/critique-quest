@@ -185,6 +185,23 @@ export const SettingsView: React.FC = () => {
               </Select>
             </FormControl>
 
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel>Default Home Page</InputLabel>
+              <Select
+                value={generalSettings.default_home_page || 'generation'}
+                label="Default Home Page"
+                onChange={(e) => setGeneralSettings(prev => ({ ...prev, default_home_page: e.target.value }))}
+              >
+                <MenuItem value="generation">Generate Case Study</MenuItem>
+                <MenuItem value="library">Library</MenuItem>
+                <MenuItem value="practice">Practice</MenuItem>
+                <MenuItem value="settings">Settings</MenuItem>
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="textSecondary" sx={{ mb: 3, display: 'block' }}>
+              💡 Choose which page to show when starting the app. Students typically prefer Library, while Lecturers often prefer Generate Case Study.
+            </Typography>
+
             <FormControlLabel
               control={<Switch defaultChecked />}
               label="Auto-save generated content"

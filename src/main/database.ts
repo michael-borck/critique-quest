@@ -48,7 +48,8 @@ export class DatabaseManager {
             complexity: 'Intermediate',
             scenario_type: 'Problem-solving',
             length_preference: 'Medium'
-          }
+          },
+          default_home_page: 'generation'
         };
         await this.db.push('/preferences', defaults, false);
       }
@@ -93,7 +94,8 @@ export class DatabaseManager {
             complexity: 'Intermediate',
             scenario_type: 'Problem-solving',
             length_preference: 'Medium'
-          }
+          },
+          default_home_page: 'generation'
         },
         ai_usage: [],
         practice_sessions: []
@@ -225,7 +227,8 @@ export class DatabaseManager {
           complexity: 'Intermediate',
           scenario_type: 'Problem-solving',
           length_preference: 'Medium'
-        }
+        },
+        default_home_page: 'generation'
       };
     }
   }

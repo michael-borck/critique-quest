@@ -91,6 +91,7 @@ export interface UserPreferences {
   default_ai_model: string;
   api_keys: Record<string, string>;
   default_generation_settings: Partial<GenerationInput>;
+  default_home_page: 'generation' | 'library' | 'practice' | 'settings';
 }
 
 export interface AIProvider {
