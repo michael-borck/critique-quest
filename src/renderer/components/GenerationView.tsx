@@ -18,10 +18,21 @@ import {
   AccordionDetails,
   Alert,
   CircularProgress,
+  Autocomplete,
+  Checkbox,
+  ListItemText,
+  Divider,
 } from '@mui/material';
-import { ExpandMore, AutoAwesome, Save, Lightbulb } from '@mui/icons-material';
+import { ExpandMore, AutoAwesome, Save, Lightbulb, Casino } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { GenerationInput } from '../../shared/types';
+import { 
+  getConceptsForDomain, 
+  getAllConceptsForDomain, 
+  personalSkillsConcepts, 
+  getRandomConcepts, 
+  getRandomPersonalSkills 
+} from '../../shared/conceptDatabase';
 
 export const GenerationView: React.FC = () => {
   const { isGenerating, generateCase, saveCase, currentCase, preferences, loadPreferences } = useAppStore();
@@ -53,9 +64,16 @@ export const GenerationView: React.FC = () => {
   });
   const [error, setError] = useState<string>('');
   const [isGeneratingContext, setIsGeneratingContext] = useState<boolean>(false);
+  const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
+  const [selectedPersonalSkills, setSelectedPersonalSkills] = useState<string[]>([]);
 
   const handleInputChange = (field: keyof GenerationInput, value: any) => {
     setInput(prev => ({ ...prev, [field]: value }));
+    
+    // Clear domain-specific concepts when domain changes
+    if (field === 'domain') {
+      setSelectedConcepts([]);
+    }
   };
 
   const handleElementToggle = (element: keyof typeof input.include_elements) => {
@@ -120,22 +138,96 @@ export const GenerationView: React.FC = () => {
     }
   };
 
+  const handleFeelingLucky = async () => {
+    // Randomly fill in all empty fields and generate
+    const domains = ['Business', 'Technology', 'Healthcare', 'Science', 'Social Sciences', 'Education'];
+    const complexities = ['Beginner', 'Intermediate', 'Advanced'];
+    const scenarioTypes = ['Problem-solving', 'Decision-making', 'Ethical Dilemma', 'Strategic Planning'];
+    const lengths = ['Short', 'Medium', 'Long'];
+
+    const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+    const randomComplexity = complexities[Math.floor(Math.random() * complexities.length)];
+    const randomScenarioType = scenarioTypes[Math.floor(Math.random() * scenarioTypes.length)];
+    const randomLength = lengths[Math.floor(Math.random() * lengths.length)];
+
+    // Generate random concepts
+    const randomConcepts = getRandomConcepts(randomDomain, 2);
+    const randomPersonalSkillsSelected = getRandomPersonalSkills(1);
+    const allSelectedConcepts = [...randomConcepts, ...randomPersonalSkillsSelected];
+
+    // Update state
+    setInput(prev => ({
+      ...prev,
+      domain: randomDomain,
+      complexity: randomComplexity,
+      scenario_type: randomScenarioType,
+      length_preference: randomLength,
+      key_concepts: allSelectedConcepts.join(', '),
+      context_setting: '', // Will be filled by AI suggestion
+    }));
+
+    setSelectedConcepts(randomConcepts);
+    setSelectedPersonalSkills(randomPersonalSkillsSelected);
+
+    // First generate context suggestion, then generate the case study
+    try {
+      setIsGeneratingContext(true);
+      const suggestedContext = await window.electronAPI.suggestContext(
+        randomDomain,
+        randomComplexity,
+        randomScenarioType
+      );
+      
+      setInput(prev => ({ ...prev, context_setting: suggestedContext }));
+      setIsGeneratingContext(false);
+
+      // Small delay to let user see the filled fields, then generate
+      setTimeout(() => {
+        handleGenerate();
+      }, 1000);
+    } catch (err) {
+      setIsGeneratingContext(false);
+      setError('Failed to generate context. Proceeding with manual context required.');
+    }
+  };
+
+  // Update key_concepts when selected concepts change
+  useEffect(() => {
+    const allConcepts = [...selectedConcepts, ...selectedPersonalSkills];
+    setInput(prev => ({ ...prev, key_concepts: allConcepts.join(', ') }));
+  }, [selectedConcepts, selectedPersonalSkills]);
+
+  // Get available concepts for current domain
+  const availableConcepts = getAllConceptsForDomain(input.domain);
+  const availablePersonalSkills = personalSkillsConcepts.flatMap(category => category.concepts);
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
         Generate Case Study
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <Typography variant="body1" color="textSecondary">
-          Create AI-powered case studies for educational purposes
-        </Typography>
-        {preferences?.default_ai_provider && (
-          <Chip 
-            label={`Using: ${preferences.default_ai_provider === 'ollama' ? 'Ollama (Local)' : preferences.default_ai_provider}`}
-            color={preferences.default_ai_provider === 'ollama' ? 'success' : 'primary'}
-            size="small"
-          />
-        )}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="body1" color="textSecondary">
+            Create AI-powered case studies for educational purposes
+          </Typography>
+          {preferences?.default_ai_provider && (
+            <Chip 
+              label={`Using: ${preferences.default_ai_provider === 'ollama' ? 'Ollama (Local)' : preferences.default_ai_provider}`}
+              color={preferences.default_ai_provider === 'ollama' ? 'success' : 'primary'}
+              size="small"
+            />
+          )}
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<Casino />}
+          onClick={handleFeelingLucky}
+          disabled={isGenerating || isGeneratingContext}
+          color="secondary"
+        >
+          I'm Feeling Lucky
+        </Button>
       </Box>
 
       <Grid container spacing={3}>
@@ -246,13 +338,69 @@ export const GenerationView: React.FC = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Key Concepts"
-                  value={input.key_concepts}
-                  onChange={(e) => handleInputChange('key_concepts', e.target.value)}
-                  placeholder="Specific theories, frameworks, or concepts to include..."
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                  Key Concepts & Theories
+                </Typography>
+                
+                {/* Domain-specific concepts */}
+                <Autocomplete
+                  multiple
+                  id="domain-concepts"
+                  options={availableConcepts}
+                  value={selectedConcepts}
+                  onChange={(_, newValue) => setSelectedConcepts(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={`${input.domain} Concepts`}
+                      placeholder="Select relevant theories and frameworks..."
+                      sx={{ mb: 2 }}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                      />
+                    ))
+                  }
                 />
+
+                {/* Personal & Interpersonal Skills */}
+                <Autocomplete
+                  multiple
+                  id="personal-skills"
+                  options={availablePersonalSkills}
+                  value={selectedPersonalSkills}
+                  onChange={(_, newValue) => setSelectedPersonalSkills(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Personal & Interpersonal Skills"
+                      placeholder="Add cross-domain personal skills..."
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                        color="secondary"
+                      />
+                    ))
+                  }
+                />
+
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                  💡 Selected concepts will be integrated into your case study. Personal skills apply across all domains.
+                </Typography>
               </Grid>
             </Grid>
 
