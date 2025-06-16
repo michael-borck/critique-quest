@@ -33,7 +33,7 @@ class Application {
 
     if (process.env.NODE_ENV === 'development') {
       // Try different ports that Vite might use
-      const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3002';
+      const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
       this.mainWindow.loadURL(devUrl);
       this.mainWindow.webContents.openDevTools();
     } else {
