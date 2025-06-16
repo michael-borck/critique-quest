@@ -22,6 +22,7 @@ const electronAPI = {
   // File operations
   exportCase: (caseData: CaseStudy, format: string) => ipcRenderer.invoke('file:export', caseData, format),
   importCase: (filePath: string) => ipcRenderer.invoke('file:import', filePath),
+  importCaseFromURL: (url: string) => ipcRenderer.invoke('file:importFromURL', url),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

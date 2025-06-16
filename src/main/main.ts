@@ -104,6 +104,10 @@ class Application {
     ipcMain.handle('file:import', async (_, filePath) => {
       return this.fileService.importCase(filePath);
     });
+
+    ipcMain.handle('file:importFromURL', async (_, url) => {
+      return this.fileService.importCaseFromURL(url);
+    });
   }
 
   private async initialize(): Promise<void> {
