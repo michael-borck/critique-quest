@@ -84,6 +84,10 @@ class Application {
       return this.aiService.regenerateSection(section, context);
     });
 
+    ipcMain.handle('ai:suggestContext', async (_, domain, complexity, scenarioType) => {
+      return this.aiService.suggestContext(domain, complexity, scenarioType);
+    });
+
     ipcMain.handle('ai:testConnection', async (_, provider, apiKey, endpoint) => {
       return this.aiService.testConnection(provider, apiKey, endpoint);
     });

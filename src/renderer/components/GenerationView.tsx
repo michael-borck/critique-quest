@@ -19,7 +19,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { ExpandMore, AutoAwesome, Save } from '@mui/icons-material';
+import { ExpandMore, AutoAwesome, Save, Lightbulb } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { GenerationInput } from '../../shared/types';
 
@@ -52,6 +52,7 @@ export const GenerationView: React.FC = () => {
     },
   });
   const [error, setError] = useState<string>('');
+  const [isGeneratingContext, setIsGeneratingContext] = useState<boolean>(false);
 
   const handleInputChange = (field: keyof GenerationInput, value: any) => {
     setInput(prev => ({ ...prev, [field]: value }));
@@ -96,6 +97,26 @@ export const GenerationView: React.FC = () => {
       } catch (err) {
         setError('Failed to save case study.');
       }
+    }
+  };
+
+  const handleSuggestContext = async () => {
+    setIsGeneratingContext(true);
+    setError('');
+    
+    try {
+      const suggestedContext = await window.electronAPI.suggestContext(
+        input.domain,
+        input.complexity,
+        input.scenario_type
+      );
+      
+      // Set the suggested context in the input
+      setInput(prev => ({ ...prev, context_setting: suggestedContext }));
+    } catch (err) {
+      setError('Failed to generate context suggestion. Please check your AI configuration.');
+    } finally {
+      setIsGeneratingContext(false);
     }
   };
 
@@ -190,15 +211,38 @@ export const GenerationView: React.FC = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Context Setting"
-                  multiline
-                  rows={3}
-                  value={input.context_setting}
-                  onChange={(e) => handleInputChange('context_setting', e.target.value)}
-                  placeholder="Describe the setting, industry, organization, or situation for your case study..."
-                />
+                <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    label="Context Setting"
+                    multiline
+                    rows={3}
+                    value={input.context_setting}
+                    onChange={(e) => handleInputChange('context_setting', e.target.value)}
+                    placeholder="Describe the setting, industry, organization, or situation for your case study..."
+                    disabled={isGeneratingContext}
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={handleSuggestContext}
+                    disabled={isGeneratingContext || isGenerating}
+                    startIcon={isGeneratingContext ? <CircularProgress size={16} /> : <Lightbulb />}
+                    sx={{ 
+                      minWidth: 'auto',
+                      px: 2,
+                      py: 1.5,
+                      height: 'fit-content',
+                      mt: 0.5,
+                      flexShrink: 0
+                    }}
+                    size="small"
+                  >
+                    {isGeneratingContext ? 'Generating...' : 'AI Suggest'}
+                  </Button>
+                </Box>
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                  💡 Need inspiration? Use "AI Suggest" to generate a context based on your selected domain, complexity, and scenario type.
+                </Typography>
               </Grid>
 
               <Grid item xs={12}>

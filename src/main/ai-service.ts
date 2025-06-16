@@ -241,6 +241,46 @@ Make it more engaging and detailed while maintaining the same educational object
     }
   }
 
+  async suggestContext(domain: string, complexity: string, scenarioType: string): Promise<string> {
+    if (!this.openaiClient) {
+      throw new Error('AI client not initialized');
+    }
+
+    const prompt = `Generate a detailed context setting for a ${complexity.toLowerCase()} level ${domain.toLowerCase()} case study focused on ${scenarioType.toLowerCase()}.
+
+The context should include:
+- Organization/company name and brief description
+- Industry and market context
+- Key stakeholders or characters
+- Relevant background situation
+- Setting (location, time period if relevant)
+- Any specific challenges or circumstances
+
+Make it realistic, engaging, and appropriate for educational purposes. Keep it concise but informative (2-3 paragraphs).
+
+Example format:
+"[Company Name] is a [size] [industry] company based in [location]... [situation/challenge]..."`;
+
+    try {
+      const completion = await this.openaiClient.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
+
+      return completion.choices[0]?.message?.content || 'Failed to generate context suggestion';
+    } catch (error) {
+      console.error('Context Suggestion Error:', error);
+      throw new Error('Failed to generate context suggestion');
+    }
+  }
+
   // Method to validate and estimate costs
   estimateTokens(input: GenerationInput): number {
     const prompt = this.buildPrompt(input);

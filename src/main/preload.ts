@@ -14,6 +14,8 @@ const electronAPI = {
   generateCase: (input: GenerationInput, provider?: string, model?: string, apiKey?: string) => 
     ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey),
   regenerateSection: (section: string, context: any) => ipcRenderer.invoke('ai:regenerateSection', section, context),
+  suggestContext: (domain: string, complexity: string, scenarioType: string) => 
+    ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType),
   testConnection: (provider: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:testConnection', provider, apiKey, endpoint),
   getOllamaModels: (endpoint?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint),
