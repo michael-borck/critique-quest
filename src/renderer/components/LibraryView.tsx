@@ -41,6 +41,7 @@ import {
   SelectAll,
   Clear,
   Folder,
+  Add,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy } from '../../shared/types';
