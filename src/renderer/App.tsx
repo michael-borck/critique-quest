@@ -31,12 +31,13 @@ type View = 'generation' | 'library' | 'practice' | 'settings';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('generation');
-  const { cases, aiStatus, loadPreferences } = useAppStore();
+  const { cases, aiStatus, loadPreferences, loadCollections } = useAppStore();
 
   useEffect(() => {
-    // Load preferences on app startup
+    // Load preferences and collections on app startup
     loadPreferences();
-  }, [loadPreferences]);
+    loadCollections();
+  }, [loadPreferences, loadCollections]);
 
   const renderView = () => {
     switch (currentView) {

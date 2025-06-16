@@ -40,23 +40,33 @@ import {
   CheckBoxOutlineBlank,
   SelectAll,
   Clear,
+  Folder,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy } from '../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { CollectionSelector } from './CollectionSelector';
+import { CollectionManager } from './CollectionManager';
 
 export const LibraryView: React.FC = () => {
   const {
     cases,
+    collections,
     searchQuery,
     filters,
+    selectedCollectionId,
+    collectionViewMode,
     loadCases,
+    loadCollections,
     setSearchQuery,
     setFilters,
+    setSelectedCollectionId,
+    setCollectionViewMode,
     updateCase,
     deleteCase,
     setCurrentCase,
     saveCase,
+    getCasesByCollection,
   } = useAppStore();
 
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
@@ -71,10 +81,27 @@ export const LibraryView: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedCases, setSelectedCases] = useState<Set<number>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [showCollectionManager, setShowCollectionManager] = useState(false);
+  const [collectionFilteredCases, setCollectionFilteredCases] = useState<CaseStudy[]>([]);
 
   useEffect(() => {
     loadCases();
-  }, [loadCases]);
+    loadCollections();
+  }, [loadCases, loadCollections]);
+
+  // Handle collection filtering
+  useEffect(() => {
+    const filterCasesByCollection = async () => {
+      if (selectedCollectionId && typeof selectedCollectionId === 'number') {
+        const collectionCases = await getCasesByCollection(selectedCollectionId);
+        setCollectionFilteredCases(collectionCases);
+      } else {
+        setCollectionFilteredCases([]);
+      }
+    };
+
+    filterCasesByCollection();
+  }, [selectedCollectionId, getCasesByCollection]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -340,7 +367,23 @@ export const LibraryView: React.FC = () => {
     }
   };
 
-  const filteredCases = cases.filter((caseStudy) => {
+  const getBaseCases = () => {
+    // Determine which cases to use based on collection selection
+    if (selectedCollectionId && typeof selectedCollectionId === 'number') {
+      return collectionFilteredCases;
+    } else if (selectedCollectionId === 'organized') {
+      // Cases that belong to at least one collection
+      return cases.filter(c => c.collection_ids && c.collection_ids.length > 0);
+    } else if (selectedCollectionId === 'unorganized') {
+      // Cases that don't belong to any collection
+      return cases.filter(c => !c.collection_ids || c.collection_ids.length === 0);
+    } else {
+      // All cases
+      return cases;
+    }
+  };
+
+  const filteredCases = getBaseCases().filter((caseStudy) => {
     if (searchQuery && !caseStudy.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !caseStudy.content.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -465,6 +508,13 @@ export const LibraryView: React.FC = () => {
               >
                 Filters
               </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Folder />}
+                onClick={() => setShowCollectionManager(true)}
+              >
+                Collections
+              </Button>
             </>
           )}
         </Box>
@@ -489,7 +539,13 @@ export const LibraryView: React.FC = () => {
 
         {showFilters && (
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
+              <CollectionSelector
+                value={selectedCollectionId || 'all'}
+                onChange={(value) => setSelectedCollectionId(value === 'all' ? null : value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
               <FormControl fullWidth>
                 <InputLabel>Domain</InputLabel>
                 <Select
@@ -506,7 +562,7 @@ export const LibraryView: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
               <FormControl fullWidth>
                 <InputLabel>Complexity</InputLabel>
                 <Select
@@ -523,7 +579,7 @@ export const LibraryView: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
               <FormControl fullWidth>
                 <InputLabel>Favorites</InputLabel>
                 <Select
@@ -878,6 +934,27 @@ export const LibraryView: React.FC = () => {
               Import from URL
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Collection Manager Dialog */}
+      <Dialog 
+        open={showCollectionManager} 
+        onClose={() => setShowCollectionManager(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: { height: '80vh' }
+        }}
+      >
+        <DialogTitle>Collection Management</DialogTitle>
+        <DialogContent>
+          <CollectionManager />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowCollectionManager(false)}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
