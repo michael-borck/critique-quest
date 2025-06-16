@@ -15,6 +15,7 @@ import {
   CheckBoxOutlineBlank,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
+import type { CaseStudy } from '../../shared/types';
 
 interface CollectionSelectorProps {
   value?: number | 'all' | 'organized' | 'unorganized';
@@ -27,7 +28,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({
   onChange,
   showViewModes = true,
 }) => {
-  const { collections, loadCollections } = useAppStore();
+  const { collections, cases, loadCollections } = useAppStore();
 
   useEffect(() => {
     loadCollections();
@@ -58,12 +59,13 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({
   const hierarchicalCollections = buildCollectionHierarchy();
 
   const getCollectionCounts = () => {
-    const totalCases = collections.reduce((sum, c) => sum + (c.case_count || 0), 0);
-    const unorganizedCount = 0; // We'll need to calculate this based on cases not in any collection
+    const totalCases = cases.length;
+    const organizedCases = collections.reduce((sum, c) => sum + (c.case_count || 0), 0);
+    const unorganizedCount = Math.max(0, totalCases - organizedCases);
     
     return {
       all: totalCases,
-      organized: totalCases - unorganizedCount,
+      organized: organizedCases,
       unorganized: unorganizedCount,
     };
   };

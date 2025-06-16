@@ -408,9 +408,17 @@ export const LibraryView: React.FC = () => {
   };
 
   const filteredCases = getBaseCases().filter((caseStudy) => {
-    if (searchQuery && !caseStudy.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !caseStudy.content.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    // Search query filter - includes questions and tags
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesTitle = caseStudy.title.toLowerCase().includes(query);
+      const matchesContent = caseStudy.content.toLowerCase().includes(query);
+      const matchesQuestions = caseStudy.questions.toLowerCase().includes(query);
+      const matchesTags = caseStudy.tags.some(tag => tag.toLowerCase().includes(query));
+      
+      if (!matchesTitle && !matchesContent && !matchesQuestions && !matchesTags) {
+        return false;
+      }
     }
     
     if (filters.domain && caseStudy.domain !== filters.domain) {
@@ -554,9 +562,62 @@ export const LibraryView: React.FC = () => {
 
       {/* Search and Filters */}
       <Box sx={{ mb: 3 }}>
+        {selectedCollectionId && typeof selectedCollectionId === 'number' && (
+          <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Folder sx={{ color: collections.find(c => c.id === selectedCollectionId)?.color || '#666' }} />
+            <Typography variant="body2" color="textSecondary">
+              Searching in collection: <strong>{collections.find(c => c.id === selectedCollectionId)?.name}</strong>
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setSelectedCollectionId(null)}
+              sx={{ textTransform: 'none' }}
+            >
+              Clear
+            </Button>
+          </Box>
+        )}
+        {selectedCollectionId === 'organized' && (
+          <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FolderOpen color="primary" />
+            <Typography variant="body2" color="textSecondary">
+              Showing: <strong>Organized cases</strong> (cases in any collection)
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setSelectedCollectionId(null)}
+              sx={{ textTransform: 'none' }}
+            >
+              Clear
+            </Button>
+          </Box>
+        )}
+        {selectedCollectionId === 'unorganized' && (
+          <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CheckBoxOutlineBlank color="secondary" />
+            <Typography variant="body2" color="textSecondary">
+              Showing: <strong>Unorganized cases</strong> (cases not in any collection)
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setSelectedCollectionId(null)}
+              sx={{ textTransform: 'none' }}
+            >
+              Clear
+            </Button>
+          </Box>
+        )}
         <TextField
           fullWidth
-          placeholder="Search case studies..."
+          placeholder={
+            selectedCollectionId && typeof selectedCollectionId === 'number'
+              ? `Search in ${collections.find(c => c.id === selectedCollectionId)?.name}...`
+              : selectedCollectionId === 'organized'
+              ? "Search organized cases..."
+              : selectedCollectionId === 'unorganized'
+              ? "Search unorganized cases..."
+              : "Search case studies..."
+          }
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           InputProps={{
@@ -818,11 +879,24 @@ export const LibraryView: React.FC = () => {
       {filteredCases.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="textSecondary">
-            No case studies found
+            {selectedCollectionId && typeof selectedCollectionId === 'number'
+              ? `No cases found in "${collections.find(c => c.id === selectedCollectionId)?.name}"`
+              : selectedCollectionId === 'organized'
+              ? 'No organized cases found'
+              : selectedCollectionId === 'unorganized'
+              ? 'No unorganized cases found'
+              : 'No case studies found'
+            }
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            {searchQuery || Object.keys(filters).length > 0
-              ? 'Try adjusting your search or filters'
+            {searchQuery || Object.keys(filters).length > 0 || selectedCollectionId
+              ? selectedCollectionId && typeof selectedCollectionId === 'number'
+                ? 'Try adding cases to this collection or adjusting your search'
+                : selectedCollectionId === 'organized'
+                ? 'Assign cases to collections to see them here'
+                : selectedCollectionId === 'unorganized'
+                ? 'All your cases are organized in collections'
+                : 'Try adjusting your search or filters'
               : 'Generate your first case study to get started'
             }
           </Typography>
