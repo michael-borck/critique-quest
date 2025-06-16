@@ -90,7 +90,7 @@ export const LibraryView: React.FC = () => {
   useEffect(() => {
     loadCases();
     loadCollections();
-  }, [loadCases, loadCollections]);
+  }, []); // Run only once on mount
 
   // Handle collection filtering
   useEffect(() => {
@@ -104,7 +104,7 @@ export const LibraryView: React.FC = () => {
     };
 
     filterCasesByCollection();
-  }, [selectedCollectionId, getCasesByCollection]);
+  }, [selectedCollectionId]); // Remove getCasesByCollection from dependencies
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);

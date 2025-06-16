@@ -55,7 +55,7 @@ export const CollectionAssignmentDialog: React.FC<CollectionAssignmentDialogProp
       loadCollections();
       loadCurrentAssignments();
     }
-  }, [open, loadCollections, caseStudies]);
+  }, [open, caseStudies]); // Remove loadCollections from dependencies
 
   const loadCurrentAssignments = async () => {
     const assignments = new Map<number, number[]>();

@@ -31,7 +31,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({
 
   useEffect(() => {
     loadCollections();
-  }, [loadCollections]);
+  }, []); // Run only once on mount
 
   const buildCollectionHierarchy = () => {
     const rootCollections = collections.filter(c => !c.parent_collection_id);

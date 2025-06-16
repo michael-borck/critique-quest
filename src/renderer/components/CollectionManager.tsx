@@ -56,7 +56,7 @@ export const CollectionManager: React.FC = () => {
 
   useEffect(() => {
     loadCollections();
-  }, [loadCollections]);
+  }, []); // Run only once on mount
 
   const handleCreateCollection = () => {
     setFormData({

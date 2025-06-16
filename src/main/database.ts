@@ -285,7 +285,7 @@ export class DatabaseManager {
   }
 
   // Collection operations
-  async getCollections(): Promise<Collection[]> {
+  private async getCollectionsRaw(): Promise<Collection[]> {
     if (!this.db) throw new Error('Database not initialized');
 
     let collections: Collection[] = [];
@@ -295,12 +295,18 @@ export class DatabaseManager {
       return [];
     }
 
+    return collections.sort((a, b) => new Date(b.modified_date || 0).getTime() - new Date(a.modified_date || 0).getTime());
+  }
+
+  async getCollections(): Promise<Collection[]> {
+    const collections = await this.getCollectionsRaw();
+
     // Calculate case and subcollection counts
     for (const collection of collections) {
-      await this.updateCollectionCounts(collection);
+      await this.updateCollectionCounts(collection, collections);
     }
 
-    return collections.sort((a, b) => new Date(b.modified_date || 0).getTime() - new Date(a.modified_date || 0).getTime());
+    return collections;
   }
 
   async saveCollection(collectionData: Collection): Promise<number> {
@@ -452,20 +458,19 @@ export class DatabaseManager {
       return [];
     }
 
-    // Get collections
-    const allCollections = await this.getCollections();
+    // Get collections (use raw to avoid recursion)
+    const allCollections = await this.getCollectionsRaw();
     return allCollections.filter(c => c.id && collectionIds.includes(c.id));
   }
 
-  private async updateCollectionCounts(collection: Collection): Promise<void> {
+  private async updateCollectionCounts(collection: Collection, allCollections: Collection[]): Promise<void> {
     if (!collection.id) return;
 
     // Count cases in this collection
     const cases = await this.getCasesByCollection(collection.id);
     collection.case_count = cases.length;
 
-    // Count subcollections
-    const allCollections = await this.getCollections();
+    // Count subcollections using the provided collections array
     collection.subcollection_count = allCollections.filter(c => c.parent_collection_id === collection.id).length;
   }
 }

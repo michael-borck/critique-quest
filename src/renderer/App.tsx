@@ -37,7 +37,7 @@ const App: React.FC = () => {
     // Load preferences and collections on app startup
     loadPreferences();
     loadCollections();
-  }, [loadPreferences, loadCollections]);
+  }, []); // Run only once on mount
 
   const renderView = () => {
     switch (currentView) {
