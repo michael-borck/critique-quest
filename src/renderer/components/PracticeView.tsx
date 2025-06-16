@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { Timer, PlayArrow, Stop, NavigateNext, NavigateBefore, Lightbulb } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export const PracticeView: React.FC = () => {
   const { currentCase } = useAppStore();
@@ -113,9 +114,7 @@ export const PracticeView: React.FC = () => {
       label: 'Read Case Study',
       content: (
         <Box>
-          <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
-            {currentCase.content}
-          </Typography>
+          <MarkdownRenderer content={currentCase.content} />
         </Box>
       ),
     },
@@ -309,9 +308,7 @@ export const PracticeView: React.FC = () => {
                     <Typography variant="h6" gutterBottom>
                       Model Answers
                     </Typography>
-                    <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
-                      {currentCase.answers}
-                    </Typography>
+                    <MarkdownRenderer content={currentCase.answers} />
                   </Box>
                 )}
               </Box>

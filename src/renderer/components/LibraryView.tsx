@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy } from '../../shared/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export const LibraryView: React.FC = () => {
   const {
@@ -252,15 +253,14 @@ export const LibraryView: React.FC = () => {
                   {caseStudy.word_count} words • Used {caseStudy.usage_count} times
                 </Typography>
 
-                <Typography variant="body2" sx={{ 
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}>
-                  {caseStudy.content}
-                </Typography>
+                <MarkdownRenderer 
+                  content={caseStudy.content}
+                  maxLines={3}
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: '0.875rem',
+                  }}
+                />
 
                 {caseStudy.tags.length > 0 && (
                   <Box sx={{ mt: 1 }}>
@@ -350,18 +350,14 @@ export const LibraryView: React.FC = () => {
                 <Chip label={selectedCase.scenario_type} />
               </Box>
               
-              <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
-                {selectedCase.content}
-              </Typography>
+              <MarkdownRenderer content={selectedCase.content} />
 
               {selectedCase.questions && (
                 <>
                   <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
                     Analysis Questions
                   </Typography>
-                  <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
-                    {selectedCase.questions}
-                  </Typography>
+                  <MarkdownRenderer content={selectedCase.questions} />
                 </>
               )}
             </DialogContent>
