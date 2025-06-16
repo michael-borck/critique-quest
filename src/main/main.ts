@@ -157,6 +157,15 @@ class Application {
     ipcMain.handle('collection:getCollectionsByCase', async (_, caseId) => {
       return this.databaseManager.getCollectionsByCase(caseId);
     });
+
+    // Usage statistics operations
+    ipcMain.handle('usage:getStats', async () => {
+      return this.databaseManager.getUsageStats();
+    });
+
+    ipcMain.handle('usage:trackAI', async (_, usage) => {
+      return this.databaseManager.trackAIUsage(usage);
+    });
   }
 
   private async initialize(): Promise<void> {

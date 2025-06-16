@@ -476,4 +476,60 @@ export class DatabaseManager {
     // Count subcollections using the provided collections array
     collection.subcollection_count = allCollections.filter(c => c.parent_collection_id === collection.id).length;
   }
+
+  async getUsageStats(): Promise<{
+    totalTokens: number;
+    totalCost: number;
+    sessionTokens: number;
+    sessionCost: number;
+    mostUsedProvider: string;
+    sessionStart: string;
+  }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    try {
+      const aiUsageList = (await this.db.getData('/ai_usage') as unknown) as AIUsage[];
+      
+      // Calculate totals
+      const totalTokens = aiUsageList.reduce((sum, usage) => sum + (usage.tokens_used || 0), 0);
+      const totalCost = aiUsageList.reduce((sum, usage) => sum + (usage.cost_estimate || 0), 0);
+      
+      // Session is defined as usage from the last hour
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const sessionUsage = aiUsageList.filter(usage => 
+        usage.timestamp && new Date(usage.timestamp) > oneHourAgo
+      );
+      
+      const sessionTokens = sessionUsage.reduce((sum, usage) => sum + (usage.tokens_used || 0), 0);
+      const sessionCost = sessionUsage.reduce((sum, usage) => sum + (usage.cost_estimate || 0), 0);
+      
+      // Find most used provider
+      const providerCounts = aiUsageList.reduce((acc, usage) => {
+        acc[usage.provider] = (acc[usage.provider] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const mostUsedProvider = Object.entries(providerCounts).length > 0 
+        ? Object.entries(providerCounts).sort(([,a], [,b]) => b - a)[0][0]
+        : 'None';
+
+      return {
+        totalTokens,
+        totalCost,
+        sessionTokens,
+        sessionCost,
+        mostUsedProvider,
+        sessionStart: oneHourAgo.toISOString(),
+      };
+    } catch {
+      return {
+        totalTokens: 0,
+        totalCost: 0,
+        sessionTokens: 0,
+        sessionCost: 0,
+        mostUsedProvider: 'None',
+        sessionStart: new Date().toISOString(),
+      };
+    }
+  }
 }

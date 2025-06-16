@@ -24,6 +24,7 @@ import { GenerationView } from './components/GenerationView';
 import { LibraryView } from './components/LibraryView';
 import { PracticeView } from './components/PracticeView';
 import { SettingsView } from './components/SettingsView';
+import { AppFooter } from './components/AppFooter';
 
 const DRAWER_WIDTH = 240;
 
@@ -112,18 +113,6 @@ const App: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ color: 'white', fontWeight: 'bold' }}>
             CritiqueQuest
           </Typography>
-          <Chip
-            label={aiStatus === 'connected' ? 'AI: Connected' : 'AI: Offline'}
-            color={aiStatus === 'connected' ? 'success' : 'warning'}
-            size="small"
-            sx={{ 
-              color: 'white',
-              alignSelf: 'flex-start',
-              '& .MuiChip-label': {
-                color: 'white'
-              }
-            }}
-          />
         </Box>
         
         <Box sx={{ overflow: 'auto', p: 1 }}>
@@ -214,12 +203,16 @@ const App: React.FC = () => {
           flexGrow: 1,
           height: '100vh',
           overflow: 'auto',
+          paddingBottom: '32px', // Account for footer height
         }}
       >
         <Box sx={{ p: 3 }}>
           {renderView()}
         </Box>
       </Box>
+
+      {/* App Footer */}
+      <AppFooter />
     </Box>
   );
 };

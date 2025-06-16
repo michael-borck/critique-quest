@@ -38,6 +38,10 @@ const electronAPI = {
   removeCaseFromCollection: (caseId: number, collectionId: number) => ipcRenderer.invoke('collection:removeCaseFromCollection', caseId, collectionId),
   getCasesByCollection: (collectionId: number) => ipcRenderer.invoke('collection:getCasesByCollection', collectionId),
   getCollectionsByCase: (caseId: number) => ipcRenderer.invoke('collection:getCollectionsByCase', caseId),
+
+  // Usage statistics operations
+  getUsageStats: () => ipcRenderer.invoke('usage:getStats'),
+  trackAIUsage: (usage: any) => ipcRenderer.invoke('usage:trackAI', usage),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
