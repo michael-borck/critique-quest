@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CaseStudy, GenerationInput, UserPreferences } from '../shared/types';
+import type { CaseStudy, Collection, GenerationInput, UserPreferences } from '../shared/types';
 
 const electronAPI = {
   // Database operations
@@ -26,6 +26,15 @@ const electronAPI = {
   exportBulkCases: (caseStudies: CaseStudy[], format: string) => ipcRenderer.invoke('file:exportBulk', caseStudies, format),
   importBulkCasesFromURL: (url: string) => ipcRenderer.invoke('file:importBulkFromURL', url),
   importBulkCasesFromFile: (content: string) => ipcRenderer.invoke('file:importBulkFromFile', content),
+
+  // Collection operations
+  getCollections: () => ipcRenderer.invoke('collection:getCollections'),
+  saveCollection: (collectionData: Collection) => ipcRenderer.invoke('collection:saveCollection', collectionData),
+  deleteCollection: (id: number) => ipcRenderer.invoke('collection:deleteCollection', id),
+  addCaseToCollection: (caseId: number, collectionId: number) => ipcRenderer.invoke('collection:addCaseToCollection', caseId, collectionId),
+  removeCaseFromCollection: (caseId: number, collectionId: number) => ipcRenderer.invoke('collection:removeCaseFromCollection', caseId, collectionId),
+  getCasesByCollection: (collectionId: number) => ipcRenderer.invoke('collection:getCasesByCollection', collectionId),
+  getCollectionsByCase: (caseId: number) => ipcRenderer.invoke('collection:getCollectionsByCase', caseId),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

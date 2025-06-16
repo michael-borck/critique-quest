@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  AppBar,
-  Toolbar,
   Typography,
   Drawer,
   List,
@@ -80,28 +78,6 @@ const App: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
-      {/* App Bar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: `calc(100% - ${DRAWER_WIDTH}px)`,
-          ml: `${DRAWER_WIDTH}px`,
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            CritiqueQuest
-          </Typography>
-          <Chip
-            label={aiStatus === 'connected' ? 'AI: Connected' : 'AI: Offline'}
-            color={aiStatus === 'connected' ? 'success' : 'warning'}
-            size="small"
-            sx={{ color: 'white' }}
-          />
-        </Toolbar>
-      </AppBar>
-
       {/* Sidebar */}
       <Drawer
         variant="permanent"
@@ -117,7 +93,31 @@ const App: React.FC = () => {
           },
         }}
       >
-        <Toolbar />
+        {/* App Header in Sidebar */}
+        <Box sx={{ 
+          p: 2, 
+          borderBottom: '1px solid #374151',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1
+        }}>
+          <Typography variant="h6" component="div" sx={{ color: 'white', fontWeight: 'bold' }}>
+            CritiqueQuest
+          </Typography>
+          <Chip
+            label={aiStatus === 'connected' ? 'AI: Connected' : 'AI: Offline'}
+            color={aiStatus === 'connected' ? 'success' : 'warning'}
+            size="small"
+            sx={{ 
+              color: 'white',
+              alignSelf: 'flex-start',
+              '& .MuiChip-label': {
+                color: 'white'
+              }
+            }}
+          />
+        </Box>
+        
         <Box sx={{ overflow: 'auto', p: 1 }}>
           {/* Navigation */}
           <List>
@@ -208,7 +208,6 @@ const App: React.FC = () => {
           overflow: 'auto',
         }}
       >
-        <Toolbar />
         <Box sx={{ p: 3 }}>
           {renderView()}
         </Box>

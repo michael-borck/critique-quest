@@ -120,6 +120,35 @@ class Application {
     ipcMain.handle('file:importBulkFromFile', async (_, content) => {
       return this.fileService.importBulkCasesFromFile(content);
     });
+
+    // Collection operations
+    ipcMain.handle('collection:getCollections', async () => {
+      return this.databaseManager.getCollections();
+    });
+
+    ipcMain.handle('collection:saveCollection', async (_, collectionData) => {
+      return this.databaseManager.saveCollection(collectionData);
+    });
+
+    ipcMain.handle('collection:deleteCollection', async (_, id) => {
+      return this.databaseManager.deleteCollection(id);
+    });
+
+    ipcMain.handle('collection:addCaseToCollection', async (_, caseId, collectionId) => {
+      return this.databaseManager.addCaseToCollection(caseId, collectionId);
+    });
+
+    ipcMain.handle('collection:removeCaseFromCollection', async (_, caseId, collectionId) => {
+      return this.databaseManager.removeCaseFromCollection(caseId, collectionId);
+    });
+
+    ipcMain.handle('collection:getCasesByCollection', async (_, collectionId) => {
+      return this.databaseManager.getCasesByCollection(collectionId);
+    });
+
+    ipcMain.handle('collection:getCollectionsByCase', async (_, caseId) => {
+      return this.databaseManager.getCollectionsByCase(caseId);
+    });
   }
 
   private async initialize(): Promise<void> {

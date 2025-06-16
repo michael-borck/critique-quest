@@ -2,7 +2,7 @@ import { JsonDB, Config } from 'node-json-db';
 import { join } from 'path';
 import { app } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
-import type { CaseStudy, AIUsage, PracticeSession } from '../shared/types';
+import type { CaseStudy, Collection, AIUsage, PracticeSession } from '../shared/types';
 
 export class DatabaseManager {
   private db: JsonDB | null = null;
@@ -64,11 +64,25 @@ export class DatabaseManager {
       } catch {
         await this.db.push('/practice_sessions', [], false);
       }
+
+      try {
+        await this.db.getData('/collections');
+      } catch {
+        await this.db.push('/collections', [], false);
+      }
+
+      try {
+        await this.db.getData('/case_collections');
+      } catch {
+        await this.db.push('/case_collections', [], false);
+      }
     } catch (error) {
       console.error('Database setup error:', error);
       // Initialize with empty database
       await this.db.push('/', {
         cases: [],
+        collections: [],
+        case_collections: [],
         preferences: {
           theme: 'light',
           default_ai_provider: 'openai',
@@ -268,5 +282,190 @@ export class DatabaseManager {
     sessions.push(newSession);
     await this.db.push('/practice_sessions', sessions);
     return newId;
+  }
+
+  // Collection operations
+  async getCollections(): Promise<Collection[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let collections: Collection[] = [];
+    try {
+      collections = (await this.db.getData('/collections') as unknown) as Collection[];
+    } catch {
+      return [];
+    }
+
+    // Calculate case and subcollection counts
+    for (const collection of collections) {
+      await this.updateCollectionCounts(collection);
+    }
+
+    return collections.sort((a, b) => new Date(b.modified_date || 0).getTime() - new Date(a.modified_date || 0).getTime());
+  }
+
+  async saveCollection(collectionData: Collection): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let collections: Collection[] = [];
+    try {
+      collections = (await this.db.getData('/collections') as unknown) as Collection[];
+    } catch {
+      await this.db.push('/collections', [], false);
+      collections = [];
+    }
+
+    const now = new Date().toISOString();
+
+    if (collectionData.id) {
+      // Update existing collection
+      const index = collections.findIndex(c => c.id === collectionData.id);
+      if (index >= 0) {
+        collections[index] = {
+          ...collectionData,
+          modified_date: now
+        };
+        await this.db.push('/collections', collections);
+        return collectionData.id;
+      }
+      throw new Error('Collection not found');
+    } else {
+      // Insert new collection
+      const newId = collections.length > 0 ? Math.max(...collections.map(c => c.id || 0)) + 1 : 1;
+      const newCollection: Collection = {
+        ...collectionData,
+        id: newId,
+        created_date: now,
+        modified_date: now
+      };
+      
+      collections.push(newCollection);
+      await this.db.push('/collections', collections);
+      return newId;
+    }
+  }
+
+  async deleteCollection(id: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Remove the collection
+    let collections: Collection[] = [];
+    try {
+      collections = (await this.db.getData('/collections') as unknown) as Collection[];
+    } catch {
+      return;
+    }
+    const filteredCollections = collections.filter(c => c.id !== id);
+    await this.db.push('/collections', filteredCollections);
+
+    // Remove all case-collection relationships for this collection
+    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+    try {
+      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+    } catch {
+      return;
+    }
+    const filteredCaseCollections = caseCollections.filter(cc => cc.collection_id !== id);
+    await this.db.push('/case_collections', filteredCaseCollections);
+
+    // Update parent_collection_id for subcollections (set to null)
+    const updatedCollections = filteredCollections.map(c => 
+      c.parent_collection_id === id ? { ...c, parent_collection_id: undefined } : c
+    );
+    await this.db.push('/collections', updatedCollections);
+  }
+
+  async addCaseToCollection(caseId: number, collectionId: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+    try {
+      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+    } catch {
+      await this.db.push('/case_collections', [], false);
+      caseCollections = [];
+    }
+
+    // Check if relationship already exists
+    const exists = caseCollections.some(cc => cc.case_id === caseId && cc.collection_id === collectionId);
+    if (!exists) {
+      caseCollections.push({ case_id: caseId, collection_id: collectionId });
+      await this.db.push('/case_collections', caseCollections);
+    }
+  }
+
+  async removeCaseFromCollection(caseId: number, collectionId: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+    try {
+      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+    } catch {
+      return;
+    }
+
+    const filteredCaseCollections = caseCollections.filter(cc => 
+      !(cc.case_id === caseId && cc.collection_id === collectionId)
+    );
+    await this.db.push('/case_collections', filteredCaseCollections);
+  }
+
+  async getCasesByCollection(collectionId: number): Promise<CaseStudy[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Get case-collection relationships
+    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+    try {
+      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+    } catch {
+      return [];
+    }
+
+    const caseIds = caseCollections
+      .filter(cc => cc.collection_id === collectionId)
+      .map(cc => cc.case_id);
+
+    if (caseIds.length === 0) {
+      return [];
+    }
+
+    // Get cases
+    const allCases = await this.getCases();
+    return allCases.filter(c => c.id && caseIds.includes(c.id));
+  }
+
+  async getCollectionsByCase(caseId: number): Promise<Collection[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Get case-collection relationships
+    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+    try {
+      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+    } catch {
+      return [];
+    }
+
+    const collectionIds = caseCollections
+      .filter(cc => cc.case_id === caseId)
+      .map(cc => cc.collection_id);
+
+    if (collectionIds.length === 0) {
+      return [];
+    }
+
+    // Get collections
+    const allCollections = await this.getCollections();
+    return allCollections.filter(c => c.id && collectionIds.includes(c.id));
+  }
+
+  private async updateCollectionCounts(collection: Collection): Promise<void> {
+    if (!collection.id) return;
+
+    // Count cases in this collection
+    const cases = await this.getCasesByCollection(collection.id);
+    collection.case_count = cases.length;
+
+    // Count subcollections
+    const allCollections = await this.getCollections();
+    collection.subcollection_count = allCollections.filter(c => c.parent_collection_id === collection.id).length;
   }
 }

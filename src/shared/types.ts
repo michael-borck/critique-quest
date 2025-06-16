@@ -13,6 +13,38 @@ export interface CaseStudy {
   is_favorite: boolean;
   word_count: number;
   usage_count: number;
+  collection_ids?: number[];
+}
+
+export interface Collection {
+  id?: number;
+  name: string;
+  description?: string;
+  color?: string;
+  parent_collection_id?: number;
+  created_date?: string;
+  modified_date?: string;
+  case_count?: number;
+  subcollection_count?: number;
+}
+
+export interface Bundle {
+  bundle_info: {
+    title: string;
+    description: string;
+    exported_by: string;
+    exported_at: string;
+    version: string;
+    total_collections: number;
+    total_cases: number;
+  };
+  collections: Collection[];
+  cases: CaseStudy[];
+  collection_hierarchies: Array<{
+    collection_id: number;
+    case_ids: number[];
+    subcollection_ids: number[];
+  }>;
 }
 
 export interface GenerationInput {
