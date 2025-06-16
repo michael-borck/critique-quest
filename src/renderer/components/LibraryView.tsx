@@ -19,6 +19,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search,
@@ -29,6 +33,9 @@ import {
   PlayArrow,
   GetApp,
   FilterList,
+  Upload,
+  Link,
+  FolderOpen,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy } from '../../shared/types';
@@ -45,11 +52,18 @@ export const LibraryView: React.FC = () => {
     updateCase,
     deleteCase,
     setCurrentCase,
+    saveCase,
   } = useAppStore();
 
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [exportFormat, setExportFormat] = useState<string>('pdf');
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importTab, setImportTab] = useState(0);
+  const [importUrl, setImportUrl] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadCases();
@@ -88,6 +102,59 @@ export const LibraryView: React.FC = () => {
     }
   };
 
+  const handleImportFromFile = async () => {
+    try {
+      setImportLoading(true);
+      setImportError(null);
+      
+      // Note: This would typically open a file picker
+      // For now, we'll show a message about implementation
+      setImportError('File picker implementation pending. Use URL import for now.');
+    } catch (error) {
+      setImportError(`Failed to import file: ${error}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleImportFromURL = async () => {
+    if (!importUrl.trim()) {
+      setImportError('Please enter a valid URL');
+      return;
+    }
+
+    try {
+      setImportLoading(true);
+      setImportError(null);
+      setImportSuccess(null);
+
+      const importedCase = await window.electronAPI.importCaseFromURL(importUrl.trim());
+      await saveCase(importedCase);
+      
+      setImportSuccess(`Successfully imported case: "${importedCase.title}"`);
+      setImportUrl('');
+      loadCases(); // Refresh the cases list
+      
+      // Auto-close dialog after success
+      setTimeout(() => {
+        setShowImportDialog(false);
+        setImportSuccess(null);
+      }, 2000);
+    } catch (error) {
+      setImportError(`Failed to import from URL: ${error}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleCloseImportDialog = () => {
+    setShowImportDialog(false);
+    setImportUrl('');
+    setImportError(null);
+    setImportSuccess(null);
+    setImportTab(0);
+  };
+
   const filteredCases = cases.filter((caseStudy) => {
     if (searchQuery && !caseStudy.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !caseStudy.content.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -119,6 +186,13 @@ export const LibraryView: React.FC = () => {
           Case Study Library
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Upload />}
+            onClick={() => setShowImportDialog(true)}
+          >
+            Import
+          </Button>
           <FormControl sx={{ minWidth: 120 }}>
             <InputLabel>Export Format</InputLabel>
             <Select
@@ -379,6 +453,108 @@ export const LibraryView: React.FC = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog 
+        open={showImportDialog} 
+        onClose={handleCloseImportDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Import Case Study</DialogTitle>
+        <DialogContent>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            <Tabs value={importTab} onChange={(_, newValue) => setImportTab(newValue)}>
+              <Tab icon={<Link />} label="From URL" />
+              <Tab icon={<FolderOpen />} label="From File" />
+            </Tabs>
+          </Box>
+
+          {/* URL Import Tab */}
+          {importTab === 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Import a case study from a JSON URL. The URL should return a valid JSON case study format.
+              </Typography>
+              
+              <TextField
+                fullWidth
+                label="Case Study URL"
+                placeholder="https://example.com/case-study.json"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                disabled={importLoading}
+                sx={{ mb: 2 }}
+              />
+
+              <Typography variant="caption" color="textSecondary">
+                Supports HTTPS URLs returning JSON case study data.
+              </Typography>
+            </Box>
+          )}
+
+          {/* File Import Tab */}
+          {importTab === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Import a case study from a local JSON file.
+              </Typography>
+              
+              <Button
+                variant="outlined"
+                startIcon={<FolderOpen />}
+                onClick={handleImportFromFile}
+                disabled={importLoading}
+                fullWidth
+                sx={{ mb: 2 }}
+              >
+                Choose File
+              </Button>
+
+              <Typography variant="caption" color="textSecondary">
+                Select a JSON file exported from CritiqueQuest or compatible format.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Status Messages */}
+          {importError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {importError}
+            </Alert>
+          )}
+
+          {importSuccess && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {importSuccess}
+            </Alert>
+          )}
+
+          {importLoading && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              <Typography variant="body2">
+                {importTab === 0 ? 'Importing from URL...' : 'Importing file...'}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions>
+          <Button onClick={handleCloseImportDialog} disabled={importLoading}>
+            Cancel
+          </Button>
+          {importTab === 0 && (
+            <Button 
+              onClick={handleImportFromURL} 
+              variant="contained"
+              disabled={importLoading || !importUrl.trim()}
+            >
+              Import from URL
+            </Button>
+          )}
+        </DialogActions>
       </Dialog>
     </Box>
   );
