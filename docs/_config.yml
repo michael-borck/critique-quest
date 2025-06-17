@@ -1,0 +1,86 @@
+# CritiqueQuest Documentation Site Configuration
+
+# Site settings
+title: "CritiqueQuest Documentation"
+description: "Comprehensive documentation for CritiqueQuest - AI-Powered Case Study Generator for Education"
+url: "https://michael-borck.github.io"
+baseurl: "/critquie-quest"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Navigation
+navigation:
+  - title: "Home"
+    url: "/"
+  - title: "Quick Start"
+    url: "/installation/quick-start/"
+  - title: "User Guides"
+    url: "/guides/"
+  - title: "Technical Docs"
+    url: "/technical/"
+  - title: "AI Setup"
+    url: "/ai-setup/"
+
+# Collections
+collections:
+  guides:
+    output: true
+    permalink: /:collection/:name/
+  installation:
+    output: true
+    permalink: /:collection/:name/
+  technical:
+    output: true
+    permalink: /:collection/:name/
+  ai-setup:
+    output: true
+    permalink: /:collection/:name/
+  features:
+    output: true
+    permalink: /:collection/:name/
+  workflows:
+    output: true
+    permalink: /:collection/:name/
+
+# SEO and social
+author: "CritiqueQuest Contributors"
+twitter:
+  username: "critiquequest"
+social:
+  name: "CritiqueQuest"
+  links:
+    - "https://github.com/michael-borck/critquie-quest"
+
+# GitHub
+repository: "michael-borck/critquie-quest"
+
+# Google Analytics (uncomment and add your tracking ID)
+# google_analytics: "UA-XXXXXX-X"
+
+# Search
+search_enabled: true
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - README.md
+
+# Sass
+sass:
+  sass_dir: _sass
+  style: compressed
