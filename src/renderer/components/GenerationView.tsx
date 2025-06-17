@@ -116,10 +116,10 @@ export const GenerationView: React.FC = () => {
       
       // Use appropriate model for Ollama
       if (provider === 'ollama') {
-        model = preferences?.default_ollama_model || 'llama2';
+        model = preferences?.default_ollama_model || preferences?.default_ai_model || 'llama2';
       }
       
-      await generateCase(input, provider, model);
+      await generateCase(input);
     } catch (err) {
       setError('Failed to generate case study. Please check your AI configuration.');
     }
@@ -195,9 +195,9 @@ export const GenerationView: React.FC = () => {
     setInput(prev => ({
       ...prev,
       domain: randomCategory,
-      complexity: randomComplexity,
-      scenario_type: randomScenarioType,
-      length_preference: randomLength,
+      complexity: randomComplexity as 'Beginner' | 'Intermediate' | 'Advanced',
+      scenario_type: randomScenarioType as 'Problem-solving' | 'Decision-making' | 'Ethical Dilemma' | 'Strategic Planning',
+      length_preference: randomLength as 'Short' | 'Medium' | 'Long',
       key_concepts: allSelectedConcepts.join(', '),
       context_setting: '', // Will be filled by AI suggestion
     }));
@@ -251,7 +251,7 @@ export const GenerationView: React.FC = () => {
       setTimeout(async () => {
         setError('');
         try {
-          await generateCase(completeInput, provider, model);
+          await generateCase(completeInput);
         } catch (err) {
           setError('Failed to generate case study. Please check your AI configuration.');
         }

@@ -89,9 +89,13 @@ export interface UserPreferences {
   theme: 'light' | 'dark';
   default_ai_provider: string;
   default_ai_model: string;
+  default_ollama_model?: string;
   api_keys: Record<string, string>;
   default_generation_settings: Partial<GenerationInput>;
   default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings';
+  ollama_endpoint?: string;
+  enable_practice_ai_analysis?: boolean;
+  enable_high_contrast?: boolean;
 }
 
 export interface AIProvider {

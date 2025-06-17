@@ -70,17 +70,21 @@ export const SettingsView: React.FC = () => {
 
   useEffect(() => {
     if (preferences) {
-      setApiKeys(preferences.api_keys || {});
+      setApiKeys({
+        openai: preferences.api_keys?.openai || '',
+        google: preferences.api_keys?.google || '',
+        anthropic: preferences.api_keys?.anthropic || ''
+      });
       setGeneralSettings({
         theme: preferences.theme || 'light',
         default_ai_provider: preferences.default_ai_provider || 'openai',
         default_ai_model: preferences.default_ai_model || 'gpt-4',
       });
-      setDefaultGeneration(preferences.default_generation_settings || {
-        domain: 'Business',
-        complexity: 'Intermediate',
-        scenario_type: 'Problem-solving',
-        length_preference: 'Medium',
+      setDefaultGeneration({
+        domain: preferences.default_generation_settings?.domain || 'Business & Management',
+        complexity: preferences.default_generation_settings?.complexity || 'Intermediate',
+        scenario_type: preferences.default_generation_settings?.scenario_type || 'Problem-solving',
+        length_preference: preferences.default_generation_settings?.length_preference || 'Medium'
       });
       setOllamaConfig(prev => ({
         ...prev,

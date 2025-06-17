@@ -262,7 +262,7 @@ export const CollectionManager: React.FC = () => {
   const renderCollectionTree = () => {
     const tree = buildCollectionTree();
     
-    const renderNode = (node: any, level: number = 0): React.ReactNode[] => {
+    const renderNode = (node: any, level: number = 0): React.ReactElement[] => {
       const result = [renderCollectionCard(node, level)];
       
       if (node.children && node.children.length > 0) {
