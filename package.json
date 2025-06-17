@@ -1,6 +1,6 @@
 {
   "name": "critique-quest",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AI-Powered Case Study Generator",
   "main": "dist/main/main.js",
   "scripts": {
