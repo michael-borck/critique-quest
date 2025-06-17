@@ -100,6 +100,10 @@ class Application {
       return this.aiService.setOllamaEndpoint(endpoint);
     });
 
+    ipcMain.handle('ai:analyzePracticeSession', async (_, practiceContext, provider, model, apiKey, endpoint) => {
+      return this.aiService.analyzePracticeSession(practiceContext, provider, model, apiKey, endpoint);
+    });
+
     // File operations
     ipcMain.handle('file:export', async (_, caseData, format) => {
       return this.fileService.exportCase(caseData, format);
@@ -165,6 +169,16 @@ class Application {
 
     ipcMain.handle('usage:trackAI', async (_, usage) => {
       return this.databaseManager.trackAIUsage(usage);
+    });
+
+    // Practice session operations
+    ipcMain.handle('practice:saveSession', async (_, session) => {
+      return this.databaseManager.savePracticeSession(session);
+    });
+
+    ipcMain.handle('practice:getSessions', async (_, caseId) => {
+      // TODO: Implement getting practice sessions for a case
+      return [];
     });
   }
 

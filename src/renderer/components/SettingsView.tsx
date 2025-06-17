@@ -116,6 +116,15 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  const handlePreferenceChange = async (key: string, value: any) => {
+    try {
+      await window.electronAPI.setPreference(key, value);
+      await loadPreferences(); // Reload to update global state
+    } catch (error) {
+      console.error(`Failed to save preference ${key}:`, error);
+    }
+  };
+
   const handleTestConnection = async (provider: string) => {
     try {
       let result = false;
@@ -177,7 +186,12 @@ export const SettingsView: React.FC = () => {
               <Select
                 value={generalSettings.theme}
                 label="Theme"
-                onChange={(e) => setGeneralSettings(prev => ({ ...prev, theme: e.target.value }))}
+                onChange={async (e) => {
+                  const newTheme = e.target.value;
+                  setGeneralSettings(prev => ({ ...prev, theme: newTheme }));
+                  // Apply theme immediately
+                  await handlePreferenceChange('theme', newTheme);
+                }}
               >
                 <MenuItem value="light">Light</MenuItem>
                 <MenuItem value="dark">Dark</MenuItem>
@@ -215,7 +229,12 @@ export const SettingsView: React.FC = () => {
             />
 
             <FormControlLabel
-              control={<Switch />}
+              control={
+                <Switch 
+                  checked={preferences?.enable_high_contrast || false}
+                  onChange={(e) => handlePreferenceChange('enable_high_contrast', e.target.checked)}
+                />
+              }
               label="Enable high contrast mode"
               sx={{ mb: 2 }}
             />
@@ -533,6 +552,29 @@ export const SettingsView: React.FC = () => {
               />
               <Typography variant="caption" color="textSecondary">
                 💡 This helps you see which case studies are most popular and track your AI usage costs.
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                AI-Enhanced Features
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Configure AI-powered enhancements for your learning experience. These features use your configured AI provider 
+                and will only work when AI is properly set up.
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={preferences?.enable_practice_ai_analysis || false}
+                    onChange={(e) => handlePreferenceChange('enable_practice_ai_analysis', e.target.checked)}
+                  />
+                }
+                label="Enable AI practice analysis and feedback"
+                sx={{ mb: 1, display: 'block' }}
+              />
+              <Typography variant="caption" color="textSecondary">
+                💡 Get personalized AI feedback on your practice sessions including content analysis, suggestions for improvement, and learning insights.
               </Typography>
             </Box>
 

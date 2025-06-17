@@ -49,6 +49,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { CollectionSelector } from './CollectionSelector';
 import { CollectionManager } from './CollectionManager';
 import { CollectionAssignmentDialog } from './CollectionAssignmentDialog';
+import { CaseStudyEditDialog } from './CaseStudyEditDialog';
 
 export const LibraryView: React.FC = () => {
   const {
@@ -90,6 +91,8 @@ export const LibraryView: React.FC = () => {
   const [casesForAssignment, setCasesForAssignment] = useState<CaseStudy[]>([]);
   const [draggedCase, setDraggedCase] = useState<CaseStudy | null>(null);
   const [dragOverCollection, setDragOverCollection] = useState<number | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [caseToEdit, setCaseToEdit] = useState<CaseStudy | null>(null);
 
   useEffect(() => {
     loadCases();
@@ -127,11 +130,28 @@ export const LibraryView: React.FC = () => {
   const handleDeleteCase = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this case study?')) {
       try {
-        await deleteCase(id);
+        // Delete from database
+        await window.electronAPI.deleteCase(id);
+        // Update local store state
+        deleteCase(id);
+        // Reload cases to ensure consistency
+        await loadCases();
       } catch (error) {
         console.error('Failed to delete case:', error);
       }
     }
+  };
+
+  const handleEditCase = (caseStudy: CaseStudy) => {
+    setCaseToEdit(caseStudy);
+    setShowEditDialog(true);
+  };
+
+  const handleEditSave = (updatedCase: CaseStudy) => {
+    // The saveCase is already called in the dialog, we just need to reload
+    loadCases();
+    setShowEditDialog(false);
+    setCaseToEdit(null);
   };
 
   const handleExport = async (caseStudy: CaseStudy, format?: string) => {
@@ -1044,8 +1064,19 @@ export const LibraryView: React.FC = () => {
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
+                    handleEditCase(caseStudy);
+                  }}
+                  title="Edit case study"
+                >
+                  <Edit />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (caseStudy.id) handleDeleteCase(caseStudy.id);
                   }}
+                  title="Delete case study"
                 >
                   <Delete />
                 </IconButton>
@@ -1116,6 +1147,17 @@ export const LibraryView: React.FC = () => {
               <Button onClick={() => setSelectedCase(null)}>Close</Button>
               <Button onClick={() => handleExport(selectedCase)} startIcon={<GetApp />}>
                 Export
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedCase) {
+                    handleEditCase(selectedCase);
+                    setSelectedCase(null);
+                  }
+                }} 
+                startIcon={<Edit />}
+              >
+                Edit
               </Button>
               <Button 
                 onClick={() => {
@@ -1273,6 +1315,17 @@ export const LibraryView: React.FC = () => {
         onClose={() => setShowCollectionAssignment(false)}
         caseStudies={casesForAssignment}
         onSuccess={handleCollectionAssignmentSuccess}
+      />
+
+      {/* Case Study Edit Dialog */}
+      <CaseStudyEditDialog
+        open={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setCaseToEdit(null);
+        }}
+        caseStudy={caseToEdit}
+        onSave={handleEditSave}
       />
     </Box>
   );

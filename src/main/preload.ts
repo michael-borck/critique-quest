@@ -20,6 +20,8 @@ const electronAPI = {
     ipcRenderer.invoke('ai:testConnection', provider, apiKey, endpoint),
   getOllamaModels: (endpoint?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint),
   setOllamaEndpoint: (endpoint: string) => ipcRenderer.invoke('ai:setOllamaEndpoint', endpoint),
+  analyzePracticeSession: (practiceContext: any, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
+    ipcRenderer.invoke('ai:analyzePracticeSession', practiceContext, provider, model, apiKey, endpoint),
 
   // File operations
   exportCase: (caseData: CaseStudy, format: string) => ipcRenderer.invoke('file:export', caseData, format),
@@ -42,6 +44,10 @@ const electronAPI = {
   // Usage statistics operations
   getUsageStats: () => ipcRenderer.invoke('usage:getStats'),
   trackAIUsage: (usage: any) => ipcRenderer.invoke('usage:trackAI', usage),
+
+  // Practice session operations
+  savePracticeSession: (session: any) => ipcRenderer.invoke('practice:saveSession', session),
+  getPracticeSessions: (caseId: number) => ipcRenderer.invoke('practice:getSessions', caseId),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

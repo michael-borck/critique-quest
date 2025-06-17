@@ -49,7 +49,9 @@ export class DatabaseManager {
             scenario_type: 'Problem-solving',
             length_preference: 'Medium'
           },
-          default_home_page: 'generation'
+          default_home_page: 'generation',
+          enable_practice_ai_analysis: false,
+          enable_high_contrast: false
         };
         await this.db.push('/preferences', defaults, false);
       }
@@ -228,7 +230,9 @@ export class DatabaseManager {
           scenario_type: 'Problem-solving',
           length_preference: 'Medium'
         },
-        default_home_page: 'generation'
+        default_home_page: 'generation',
+        enable_practice_ai_analysis: false,
+        enable_high_contrast: false
       };
     }
   }
@@ -265,7 +269,7 @@ export class DatabaseManager {
     await this.db.push('/ai_usage', aiUsageList);
   }
 
-  async savePracticeSession(session: PracticeSession): Promise<number> {
+  async savePracticeSession(session: PracticeSession & { analysis?: any }): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
 
     let sessions: PracticeSession[] = [];

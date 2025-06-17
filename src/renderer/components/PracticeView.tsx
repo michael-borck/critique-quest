@@ -20,6 +20,8 @@ import {
 import { Timer, PlayArrow, Stop, NavigateNext, NavigateBefore, Lightbulb } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { PracticeAnalysisDialog } from './PracticeAnalysisDialog';
+import { analyzePracticeSession, PracticeAnalysis } from '../../shared/textAnalysis';
 
 export const PracticeView: React.FC = () => {
   const { currentCase } = useAppStore();
@@ -30,6 +32,8 @@ export const PracticeView: React.FC = () => {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showHints, setShowHints] = useState(false);
+  const [practiceAnalysis, setPracticeAnalysis] = useState<PracticeAnalysis | null>(null);
+  const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -73,15 +77,29 @@ export const PracticeView: React.FC = () => {
     if (!currentCase) return;
 
     try {
+      // Generate practice analysis
+      const questions = currentCase.questions.split('\n').filter(q => q.trim());
+      const analysis = analyzePracticeSession(questions, answers, timeElapsed);
+      
       const session = {
         case_id: currentCase.id!,
         start_time: new Date(Date.now() - timeElapsed * 1000).toISOString(),
         end_time: new Date().toISOString(),
         notes: notes,
+        answers: answers,
+        analysis: analysis,
       };
 
-      // Save practice session (would be implemented in the store)
-      console.log('Practice session completed:', session);
+      // Save practice session with analysis data
+      try {
+        await window.electronAPI.savePracticeSession(session);
+        console.log('Practice session saved successfully');
+      } catch (error) {
+        console.error('Failed to save practice session:', error);
+      }
+      
+      setPracticeAnalysis(analysis);
+      setShowAnalysisDialog(true);
       
       // Reset practice state
       setActiveStep(0);
@@ -330,6 +348,14 @@ export const PracticeView: React.FC = () => {
           </Paper>
         )}
       </Paper>
+
+      {/* Practice Analysis Dialog */}
+      <PracticeAnalysisDialog
+        open={showAnalysisDialog}
+        onClose={() => setShowAnalysisDialog(false)}
+        analysis={practiceAnalysis}
+        caseTitle={currentCase?.title || ''}
+      />
     </Box>
   );
 };

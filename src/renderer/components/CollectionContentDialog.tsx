@@ -24,9 +24,11 @@ import {
   Star,
   StarBorder,
   Close,
+  Edit,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { CaseStudyEditDialog } from './CaseStudyEditDialog';
 import type { Collection, CaseStudy } from '../../shared/types';
 
 interface CollectionContentDialogProps {
@@ -53,6 +55,8 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [caseToEdit, setCaseToEdit] = useState<CaseStudy | null>(null);
 
   useEffect(() => {
     if (open && collection?.id) {
@@ -130,6 +134,18 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
 
   const handleViewCase = (caseStudy: CaseStudy) => {
     setSelectedCase(caseStudy);
+  };
+
+  const handleEditCase = (caseStudy: CaseStudy) => {
+    setCaseToEdit(caseStudy);
+    setShowEditDialog(true);
+  };
+
+  const handleEditSave = (updatedCase: CaseStudy) => {
+    // Reload collection cases after edit
+    loadCollectionCases();
+    setShowEditDialog(false);
+    setCaseToEdit(null);
   };
 
   const handleCloseDialog = () => {
@@ -278,6 +294,16 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
                       </Button>
                       <IconButton
                         size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCase(caseStudy);
+                        }}
+                        title="Edit case study"
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
                         color="warning"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -347,6 +373,15 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
                 Export
               </Button>
               <Button 
+                onClick={() => {
+                  handleEditCase(selectedCase);
+                  setSelectedCase(null);
+                }} 
+                startIcon={<Edit />}
+              >
+                Edit
+              </Button>
+              <Button 
                 onClick={() => handlePractice(selectedCase)} 
                 startIcon={<PlayArrow />}
                 variant="contained"
@@ -357,6 +392,17 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
           </>
         )}
       </Dialog>
+
+      {/* Case Study Edit Dialog */}
+      <CaseStudyEditDialog
+        open={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setCaseToEdit(null);
+        }}
+        caseStudy={caseToEdit}
+        onSave={handleEditSave}
+      />
     </>
   );
 };

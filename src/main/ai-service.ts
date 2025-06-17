@@ -416,4 +416,75 @@ Example format:
   setOllamaEndpoint(endpoint: string): void {
     this.ollamaEndpoint = endpoint;
   }
+
+  async analyzePracticeSession(practiceContext: any, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<string> {
+    const prompt = `You are an expert educational assessor. Analyze this student's practice session and provide constructive feedback.
+
+Practice Session Details:
+- Case Study: ${practiceContext.caseTitle}
+- Completion Rate: ${practiceContext.completionRate}%
+- Total Words Written: ${practiceContext.totalWordCount}
+- Average Words per Answer: ${practiceContext.averageWordsPerAnswer}
+- Time Spent: ${practiceContext.timeSpent}
+
+Answer Summaries:
+${practiceContext.answerSummaries.map((summary: any, index: number) => `
+Question ${index + 1}: ${summary.question}
+- Word Count: ${summary.wordCount}
+- Completeness: ${summary.completeness}
+- Complexity Level: ${summary.readabilityLevel}
+`).join('\n')}
+
+Please provide:
+1. Overall assessment of the student's analytical approach
+2. Specific feedback on depth of analysis and critical thinking
+3. Areas where the student demonstrated strong understanding
+4. Opportunities for improvement in future practice sessions
+5. Recommendations for developing better case analysis skills
+
+Keep the feedback constructive, encouraging, and actionable. Focus on learning outcomes and skill development.`;
+
+    try {
+      if (provider === 'ollama') {
+        if (endpoint) {
+          const originalEndpoint = this.ollamaEndpoint;
+          this.ollamaEndpoint = endpoint;
+          const result = await this.generateContextWithOllama(prompt, model);
+          this.ollamaEndpoint = originalEndpoint;
+          return result;
+        } else {
+          return await this.generateContextWithOllama(prompt, model);
+        }
+      } else {
+        if (!this.openaiClient && apiKey) {
+          this.initializeOpenAI(apiKey);
+        }
+        
+        if (!this.openaiClient) {
+          throw new Error('AI client not initialized');
+        }
+
+        const completion = await this.openaiClient.chat.completions.create({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert educational assessor who provides constructive feedback on student practice sessions.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        });
+
+        return completion.choices[0]?.message?.content || 'Failed to generate practice analysis';
+      }
+    } catch (error) {
+      console.error('Practice Analysis Error:', error);
+      throw new Error('Failed to generate practice analysis');
+    }
+  }
 }
