@@ -37,9 +37,9 @@ export const AppThemeProvider: React.FC<AppThemeProviderProps> = ({ children }) 
         case 'dark':
           setCurrentTheme('dark');
           break;
-        // case 'auto':
-        //   setCurrentTheme(getSystemTheme());
-        //   break;
+        case 'auto':
+          setCurrentTheme(getSystemTheme());
+          break;
         case 'light':
         default:
           setCurrentTheme('light');
@@ -50,7 +50,15 @@ export const AppThemeProvider: React.FC<AppThemeProviderProps> = ({ children }) 
 
   // Listen for system theme changes when in auto mode
   useEffect(() => {
-    // Auto theme support disabled for now
+    if (preferences?.theme === 'auto') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        setCurrentTheme(e.matches ? 'dark' : 'light');
+      };
+
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
   }, [preferences?.theme]);
 
   const toggleTheme = () => {

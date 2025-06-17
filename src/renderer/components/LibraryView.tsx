@@ -71,6 +71,7 @@ export const LibraryView: React.FC = () => {
     saveCase,
     getCasesByCollection,
     startPractice,
+    addCaseToCollection,
   } = useAppStore();
 
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null);
@@ -443,7 +444,7 @@ export const LibraryView: React.FC = () => {
     if (!draggedCase || !draggedCase.id) return;
 
     try {
-      // await addCaseToCollection(draggedCase.id, collectionId); // TODO: Implement this function
+      await addCaseToCollection(draggedCase.id, collectionId);
       setImportSuccess(`Added "${draggedCase.title}" to collection`);
       setTimeout(() => setImportSuccess(null), 3000);
     } catch (error) {

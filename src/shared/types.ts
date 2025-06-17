@@ -86,7 +86,7 @@ export interface PracticeSession {
 }
 
 export interface UserPreferences {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'auto';
   default_ai_provider: string;
   default_ai_model: string;
   default_ollama_model?: string;
