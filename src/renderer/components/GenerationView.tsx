@@ -233,13 +233,13 @@ export const GenerationView: React.FC = () => {
       );
       
       // Create the complete input object with the generated context
-      const completeInput = {
+      const completeInput: GenerationInput = {
         domain: randomCategory,
-        complexity: randomComplexity,
-        scenario_type: randomScenarioType,
-        length_preference: randomLength,
+        complexity: randomComplexity as 'Beginner' | 'Intermediate' | 'Advanced',
+        scenario_type: randomScenarioType as 'Problem-solving' | 'Decision-making' | 'Ethical Dilemma' | 'Strategic Planning',
+        length_preference: randomLength as 'Short' | 'Medium' | 'Long',
         key_concepts: allSelectedConcepts.join(', '),
-        context_setting: suggestedContext,
+        context_setting: suggestedContext || '',
         custom_prompt: input.custom_prompt,
         include_elements: input.include_elements,
       };

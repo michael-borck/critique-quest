@@ -9,7 +9,7 @@ interface AppState {
   
   // Collections
   collections: Collection[];
-  selectedCollectionId: number | null;
+  selectedCollectionId: number | string | null;
   collectionViewMode: 'all' | 'organized' | 'unorganized';
   
   // UI State

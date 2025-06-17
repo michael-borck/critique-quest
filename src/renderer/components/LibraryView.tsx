@@ -718,8 +718,8 @@ export const LibraryView: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={3}>
               <CollectionSelector
-                value={selectedCollectionId || 'all'}
-                onChange={(value) => setSelectedCollectionId(value === 'all' ? null : (typeof value === 'string' ? value : Number(value)))}
+                value={selectedCollectionId as any || 'all'}
+                onChange={(value) => setSelectedCollectionId(value === 'all' ? null : value as any)}
               />
             </Grid>
             <Grid item xs={12} sm={3}>

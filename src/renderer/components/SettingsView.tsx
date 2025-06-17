@@ -55,6 +55,7 @@ export const SettingsView: React.FC = () => {
     theme: 'light',
     default_ai_provider: 'openai',
     default_ai_model: 'gpt-4',
+    default_home_page: 'generation',
   });
   const [defaultGeneration, setDefaultGeneration] = useState({
     domain: 'Business',
@@ -79,6 +80,7 @@ export const SettingsView: React.FC = () => {
         theme: preferences.theme || 'light',
         default_ai_provider: preferences.default_ai_provider || 'openai',
         default_ai_model: preferences.default_ai_model || 'gpt-4',
+        default_home_page: preferences.default_home_page || 'generation',
       });
       setDefaultGeneration({
         domain: preferences.default_generation_settings?.domain || 'Business & Management',
