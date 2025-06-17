@@ -91,7 +91,7 @@ export interface UserPreferences {
   default_ai_model: string;
   api_keys: Record<string, string>;
   default_generation_settings: Partial<GenerationInput>;
-  default_home_page: 'generation' | 'library' | 'practice' | 'settings';
+  default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings';
 }
 
 export interface AIProvider {
@@ -109,4 +109,27 @@ export interface OllamaModel {
   modified_at: string;
   size: number;
   digest: string;
+}
+
+export interface DocumentationPage {
+  id: string;
+  title: string;
+  category: 'Getting Started' | 'User Guides' | 'AI Setup' | 'Technical' | 'Reference';
+  userType: 'student' | 'educator' | 'administrator' | 'developer' | 'all';
+  content: string; // Markdown content
+  description: string;
+  tags: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedReadTime: number; // minutes
+  lastUpdated: string;
+  isBuiltIn: boolean; // true for default docs, false for user-customized
+  section?: string; // subcategory within main category
+}
+
+export interface DocumentationFilters {
+  searchQuery?: string;
+  category?: string;
+  userType?: string;
+  difficulty?: string;
+  tags?: string[];
 }

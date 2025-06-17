@@ -18,17 +18,19 @@ import {
   Star,
   History,
   Tag,
+  MenuBook,
 } from '@mui/icons-material';
 import { useAppStore } from './store/appStore';
 import { GenerationView } from './components/GenerationView';
 import { LibraryView } from './components/LibraryView';
 import { PracticeView } from './components/PracticeView';
+import { DocumentationView } from './components/DocumentationView';
 import { SettingsView } from './components/SettingsView';
 import { AppFooter } from './components/AppFooter';
 
 const DRAWER_WIDTH = 240;
 
-type View = 'generation' | 'library' | 'practice' | 'settings';
+type View = 'generation' | 'library' | 'practice' | 'documentation' | 'settings';
 
 const App: React.FC = () => {
   const { cases, aiStatus, preferences, selectedView, setSelectedView, loadPreferences, loadCollections } = useAppStore();
@@ -55,6 +57,8 @@ const App: React.FC = () => {
         return <LibraryView />;
       case 'practice':
         return <PracticeView />;
+      case 'documentation':
+        return <DocumentationView />;
       case 'settings':
         return <SettingsView />;
       default:
@@ -77,6 +81,11 @@ const App: React.FC = () => {
       id: 'practice' as View,
       label: 'Practice',
       icon: <PlayArrow />,
+    },
+    {
+      id: 'documentation' as View,
+      label: 'Documentation',
+      icon: <MenuBook />,
     },
     {
       id: 'settings' as View,

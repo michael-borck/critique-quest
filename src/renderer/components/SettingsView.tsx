@@ -20,8 +20,9 @@ import {
   Divider,
   Grid,
 } from '@mui/material';
-import { ExpandMore, Save, Key } from '@mui/icons-material';
+import { ExpandMore, Save, Key, MenuBook } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
+import { documentationService } from '../services/documentationService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -156,6 +157,22 @@ export const SettingsView: React.FC = () => {
       alert(`✅ Loaded ${models.length} models from Ollama`);
     } catch (error) {
       alert(`❌ Failed to load models: ${error}`);
+    }
+  };
+
+  const handleRestoreDocumentation = async () => {
+    const confirmed = window.confirm(
+      'This will restore all documentation to default content. Any customizations will be lost. Continue?'
+    );
+    
+    if (confirmed) {
+      try {
+        await documentationService.restoreDefaultDocumentation();
+        alert('✅ Documentation restored to defaults successfully!');
+      } catch (error) {
+        console.error('Failed to restore documentation:', error);
+        alert('❌ Failed to restore documentation. Please try again.');
+      }
     }
   };
 
@@ -584,12 +601,25 @@ export const SettingsView: React.FC = () => {
               <Typography variant="subtitle1" gutterBottom color="error">
                 Danger Zone
               </Typography>
-              <Button variant="outlined" color="error" sx={{ mr: 1 }}>
-                Clear All Data
-              </Button>
-              <Button variant="outlined" color="error">
-                Reset to Defaults
-              </Button>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                These actions cannot be undone. Please make sure you have exported your data before proceeding.
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Button 
+                  variant="outlined" 
+                  color="warning" 
+                  onClick={handleRestoreDocumentation}
+                  startIcon={<MenuBook />}
+                >
+                  Restore Default Documentation
+                </Button>
+                <Button variant="outlined" color="error">
+                  Clear All Data
+                </Button>
+                <Button variant="outlined" color="error">
+                  Reset to Defaults
+                </Button>
+              </Box>
             </Box>
           </Box>
         </TabPanel>
