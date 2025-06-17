@@ -27,10 +27,12 @@ import { ExpandMore, AutoAwesome, Save, Lightbulb, Casino } from '@mui/icons-mat
 import { useAppStore } from '../store/appStore';
 import type { GenerationInput } from '../../shared/types';
 import { 
-  getConceptsForDomain, 
-  getAllConceptsForDomain, 
+  getCategories,
+  getDisciplinesForCategory,
+  getConceptsForDiscipline,
+  getAllConceptsForCategory,
   personalSkillsConcepts, 
-  getRandomConcepts, 
+  getRandomConceptsFromDiscipline,
   getRandomPersonalSkills 
 } from '../../shared/conceptDatabase';
 
@@ -44,7 +46,7 @@ export const GenerationView: React.FC = () => {
     }
   }, [preferences, loadPreferences]);
   const [input, setInput] = useState<GenerationInput>({
-    domain: 'Business',
+    domain: 'Business & Management',
     complexity: 'Intermediate',
     scenario_type: 'Problem-solving',
     context_setting: '',
@@ -64,6 +66,8 @@ export const GenerationView: React.FC = () => {
   });
   const [error, setError] = useState<string>('');
   const [isGeneratingContext, setIsGeneratingContext] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Business & Management');
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>('');
   const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
   const [selectedPersonalSkills, setSelectedPersonalSkills] = useState<string[]>([]);
   const [expertMode, setExpertMode] = useState<boolean>(false);
@@ -75,6 +79,18 @@ export const GenerationView: React.FC = () => {
     if (field === 'domain') {
       setSelectedConcepts([]);
     }
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setSelectedDiscipline('');
+    setSelectedConcepts([]);
+    setInput(prev => ({ ...prev, domain: category }));
+  };
+
+  const handleDisciplineChange = (discipline: string) => {
+    setSelectedDiscipline(discipline);
+    setSelectedConcepts([]);
   };
 
   const handleElementToggle = (element: keyof typeof input.include_elements) => {
@@ -156,25 +172,29 @@ export const GenerationView: React.FC = () => {
 
   const handleFeelingLucky = async () => {
     // Randomly fill in all empty fields and generate
-    const domains = ['Business', 'Technology', 'Healthcare', 'Science', 'Social Sciences', 'Education'];
+    const categories = getCategories();
     const complexities = ['Beginner', 'Intermediate', 'Advanced'];
     const scenarioTypes = ['Problem-solving', 'Decision-making', 'Ethical Dilemma', 'Strategic Planning'];
     const lengths = ['Short', 'Medium', 'Long'];
 
-    const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     const randomComplexity = complexities[Math.floor(Math.random() * complexities.length)];
     const randomScenarioType = scenarioTypes[Math.floor(Math.random() * scenarioTypes.length)];
     const randomLength = lengths[Math.floor(Math.random() * lengths.length)];
 
-    // Generate random concepts
-    const randomConcepts = getRandomConcepts(randomDomain, 2);
+    // Get random discipline from selected category
+    const disciplines = getDisciplinesForCategory(randomCategory);
+    const randomDiscipline = disciplines[Math.floor(Math.random() * disciplines.length)];
+
+    // Generate random concepts from the selected discipline
+    const randomConcepts = getRandomConceptsFromDiscipline(randomCategory, randomDiscipline, 2);
     const randomPersonalSkillsSelected = getRandomPersonalSkills(1);
     const allSelectedConcepts = [...randomConcepts, ...randomPersonalSkillsSelected];
 
     // Update state
     setInput(prev => ({
       ...prev,
-      domain: randomDomain,
+      domain: randomCategory,
       complexity: randomComplexity,
       scenario_type: randomScenarioType,
       length_preference: randomLength,
@@ -182,6 +202,8 @@ export const GenerationView: React.FC = () => {
       context_setting: '', // Will be filled by AI suggestion
     }));
 
+    setSelectedCategory(randomCategory);
+    setSelectedDiscipline(randomDiscipline);
     setSelectedConcepts(randomConcepts);
     setSelectedPersonalSkills(randomPersonalSkillsSelected);
 
@@ -201,7 +223,7 @@ export const GenerationView: React.FC = () => {
       const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
       
       const suggestedContext = await window.electronAPI.suggestContext(
-        randomDomain,
+        randomCategory,
         randomComplexity,
         randomScenarioType,
         provider,
@@ -212,7 +234,7 @@ export const GenerationView: React.FC = () => {
       
       // Create the complete input object with the generated context
       const completeInput = {
-        domain: randomDomain,
+        domain: randomCategory,
         complexity: randomComplexity,
         scenario_type: randomScenarioType,
         length_preference: randomLength,
@@ -248,8 +270,12 @@ export const GenerationView: React.FC = () => {
     }
   }, [selectedConcepts, selectedPersonalSkills, expertMode]);
 
-  // Get available concepts for current domain
-  const availableConcepts = getAllConceptsForDomain(input.domain);
+  // Get available options for hierarchical selection
+  const availableCategories = getCategories();
+  const availableDisciplines = getDisciplinesForCategory(selectedCategory);
+  const availableConcepts = selectedDiscipline 
+    ? getConceptsForDiscipline(selectedCategory, selectedDiscipline)
+    : getAllConceptsForCategory(selectedCategory);
   const availablePersonalSkills = personalSkillsConcepts.flatMap(category => category.concepts);
 
   return (
@@ -293,18 +319,34 @@ export const GenerationView: React.FC = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Domain</InputLabel>
+                  <InputLabel>Category</InputLabel>
                   <Select
-                    value={input.domain}
-                    label="Domain"
-                    onChange={(e) => handleInputChange('domain', e.target.value)}
+                    value={selectedCategory}
+                    label="Category"
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                   >
-                    <MenuItem value="Business">Business</MenuItem>
-                    <MenuItem value="Technology">Technology</MenuItem>
-                    <MenuItem value="Healthcare">Healthcare</MenuItem>
-                    <MenuItem value="Science">Science</MenuItem>
-                    <MenuItem value="Social Sciences">Social Sciences</MenuItem>
-                    <MenuItem value="Education">Education</MenuItem>
+                    {availableCategories.map(category => (
+                      <MenuItem key={category} value={category}>{category}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Discipline (Optional)</InputLabel>
+                  <Select
+                    value={selectedDiscipline}
+                    label="Discipline (Optional)"
+                    onChange={(e) => handleDisciplineChange(e.target.value)}
+                    disabled={!selectedCategory}
+                  >
+                    <MenuItem value="">
+                      <em>All Disciplines</em>
+                    </MenuItem>
+                    {availableDisciplines.map(discipline => (
+                      <MenuItem key={discipline} value={discipline}>{discipline}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -430,9 +472,10 @@ export const GenerationView: React.FC = () => {
                       renderInput={(params) => (
                         <TextField
                           {...params}
-                          label={`${input.domain} Concepts`}
+                          label={selectedDiscipline ? `${selectedDiscipline} Concepts` : `${selectedCategory} Concepts`}
                           placeholder="Select relevant theories and frameworks..."
                           sx={{ mb: 2 }}
+                          helperText={selectedDiscipline ? `Showing concepts from ${selectedDiscipline}` : `Showing all concepts from ${selectedCategory}`}
                         />
                       )}
                       renderTags={(value, getTagProps) =>
