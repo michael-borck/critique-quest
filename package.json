@@ -3,6 +3,11 @@
   "version": "1.0.5",
   "description": "AI-Powered Case Study Generator",
   "main": "dist/main/main.js",
+  "homepage": "https://github.com/michael-borck/critique-quest",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michael-borck/critique-quest.git"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "tsc -p src/main && NODE_ENV=development electron dist/main/main.js --no-sandbox",
@@ -20,7 +25,10 @@
     "case-studies",
     "electron"
   ],
-  "author": "CritiqueQuest",
+  "author": {
+    "name": "Michael Borck",
+    "email": "michael@borck.me"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.8.0",
