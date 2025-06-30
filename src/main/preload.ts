@@ -1,26 +1,26 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CaseStudy, Collection, GenerationInput, UserPreferences } from '../shared/types';
+import type { CaseStudy, Collection, GenerationInput, CaseFilters, PracticeContext } from '../shared/types';
 
 const electronAPI = {
   // Database operations
-  getCases: (filters?: any) => ipcRenderer.invoke('db:getCases', filters),
+  getCases: (filters?: CaseFilters) => ipcRenderer.invoke('db:getCases', filters),
   saveCase: (caseData: CaseStudy) => ipcRenderer.invoke('db:saveCase', caseData),
   deleteCase: (id: number) => ipcRenderer.invoke('db:deleteCase', id),
   searchCases: (query: string) => ipcRenderer.invoke('db:searchCases', query),
   getPreferences: () => ipcRenderer.invoke('db:getPreferences'),
-  setPreference: (key: string, value: any) => ipcRenderer.invoke('db:setPreference', key, value),
+  setPreference: (key: string, value: unknown) => ipcRenderer.invoke('db:setPreference', key, value),
 
   // AI operations
   generateCase: (input: GenerationInput, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey, endpoint),
-  regenerateSection: (section: string, context: any) => ipcRenderer.invoke('ai:regenerateSection', section, context),
+  regenerateSection: (section: string, context: unknown) => ipcRenderer.invoke('ai:regenerateSection', section, context),
   suggestContext: (domain: string, complexity: string, scenarioType: string, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType, provider, model, apiKey, endpoint),
   testConnection: (provider: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:testConnection', provider, apiKey, endpoint),
   getOllamaModels: (endpoint?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint),
   setOllamaEndpoint: (endpoint: string) => ipcRenderer.invoke('ai:setOllamaEndpoint', endpoint),
-  analyzePracticeSession: (practiceContext: any, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
+  analyzePracticeSession: (practiceContext: PracticeContext, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:analyzePracticeSession', practiceContext, provider, model, apiKey, endpoint),
 
   // File operations
@@ -43,10 +43,10 @@ const electronAPI = {
 
   // Usage statistics operations
   getUsageStats: () => ipcRenderer.invoke('usage:getStats'),
-  trackAIUsage: (usage: any) => ipcRenderer.invoke('usage:trackAI', usage),
+  trackAIUsage: (usage: unknown) => ipcRenderer.invoke('usage:trackAI', usage),
 
   // Practice session operations
-  savePracticeSession: (session: any) => ipcRenderer.invoke('practice:saveSession', session),
+  savePracticeSession: (session: unknown) => ipcRenderer.invoke('practice:saveSession', session),
   getPracticeSessions: (caseId: number) => ipcRenderer.invoke('practice:getSessions', caseId),
 };
 

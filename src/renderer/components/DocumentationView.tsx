@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -30,13 +30,10 @@ import {
   School,
   Business,
   Computer,
-  LocalHospital,
-  Science,
   Settings as SettingsIcon,
   Close,
   AccessTime,
   Person,
-  Category,
   Lightbulb,
   Help,
 } from '@mui/icons-material';
@@ -98,10 +95,6 @@ export const DocumentationView: React.FC = () => {
     loadDocumentation();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [docs, searchQuery, selectedCategory, selectedUserType, selectedDifficulty]);
-
   const loadDocumentation = async () => {
     try {
       setLoading(true);
@@ -114,7 +107,7 @@ export const DocumentationView: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     const filters: DocumentationFilters = {
       searchQuery: searchQuery || undefined,
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
@@ -152,7 +145,11 @@ export const DocumentationView: React.FC = () => {
     }
 
     setFilteredDocs(filtered);
-  };
+  }, [docs, searchQuery, selectedCategory, selectedUserType, selectedDifficulty]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleDocumentClick = (doc: DocumentationPage) => {
     setSelectedDoc(doc);
@@ -177,7 +174,7 @@ export const DocumentationView: React.FC = () => {
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
+  const getDifficultyColor = (difficulty: string): 'success' | 'warning' | 'error' | 'default' => {
     switch (difficulty) {
       case 'beginner': return 'success';
       case 'intermediate': return 'warning';
@@ -314,7 +311,7 @@ export const DocumentationView: React.FC = () => {
                 scrollButtons="auto"
               >
                 <Tab label={`All (${filteredDocs.length})`} />
-                {categoryTabs.map((category, index) => (
+                {categoryTabs.map((category) => (
                   <Tab 
                     key={category} 
                     label={`${category} (${docsByCategory[category].length})`}
@@ -383,7 +380,7 @@ export const DocumentationView: React.FC = () => {
                         <Chip 
                           size="small" 
                           label={doc.difficulty}
-                          color={getDifficultyColor(doc.difficulty) as any}
+                          color={getDifficultyColor(doc.difficulty)}
                           variant="outlined"
                         />
                         <Chip 
@@ -457,7 +454,7 @@ export const DocumentationView: React.FC = () => {
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 0.5, mb: 2 }}>
                           <Chip size="small" label={doc.userType} />
-                          <Chip size="small" label={doc.difficulty} color={getDifficultyColor(doc.difficulty) as any} />
+                          <Chip size="small" label={doc.difficulty} color={getDifficultyColor(doc.difficulty)} />
                           <Chip size="small" label={`${doc.estimatedReadTime} min`} />
                         </Box>
                       </CardContent>
@@ -517,7 +514,7 @@ export const DocumentationView: React.FC = () => {
                   />
                   <Chip 
                     label={selectedDoc.difficulty}
-                    color={getDifficultyColor(selectedDoc.difficulty) as any}
+                    color={getDifficultyColor(selectedDoc.difficulty)}
                   />
                   <Chip 
                     icon={<AccessTime />}

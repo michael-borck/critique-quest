@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CaseStudy, Collection, GenerationInput, UserPreferences } from '../../shared/types';
+import type { CaseStudy, Collection, GenerationInput, UserPreferences, CaseFilters } from '../../shared/types';
 
 interface AppState {
   // Cases
@@ -15,12 +15,7 @@ interface AppState {
   // UI State
   selectedView: string;
   searchQuery: string;
-  filters: {
-    domain?: string;
-    complexity?: string;
-    favorite?: boolean;
-    collection_id?: number;
-  };
+  filters: CaseFilters;
   
   // AI Status
   aiStatus: 'connected' | 'disconnected' | 'error';
@@ -37,7 +32,10 @@ interface AppState {
   setIsGenerating: (generating: boolean) => void;
   setSelectedView: (view: string) => void;
   setSearchQuery: (query: string) => void;
-  setFilters: (filters: any) => void;
+  setFilters: (filters: CaseFilters) => void;
+  addTagFilter: (tag: string) => void;
+  removeTagFilter: (tag: string) => void;
+  clearTagFilters: () => void;
   setAiStatus: (status: 'connected' | 'disconnected' | 'error') => void;
   setPreferences: (preferences: UserPreferences) => void;
   
@@ -97,6 +95,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedView: (selectedView) => set({ selectedView }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setFilters: (filters) => set({ filters }),
+  addTagFilter: (tag) => set((state) => ({
+    filters: {
+      ...state.filters,
+      tags: [...(state.filters.tags || []), tag]
+    }
+  })),
+  removeTagFilter: (tag) => set((state) => ({
+    filters: {
+      ...state.filters,
+      tags: (state.filters.tags || []).filter(t => t !== tag)
+    }
+  })),
+  clearTagFilters: () => set((state) => ({
+    filters: {
+      ...state.filters,
+      tags: undefined
+    }
+  })),
   setAiStatus: (aiStatus) => set({ aiStatus }),
   setPreferences: (preferences) => set({ preferences }),
   
@@ -116,7 +132,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Async actions
   loadCases: async () => {
     try {
-      const cases = await window.electronAPI.getCases();
+      const state = get();
+      const cases = await window.electronAPI.getCases(state.filters);
       set({ cases });
     } catch (error) {
       console.error('Failed to load cases:', error);

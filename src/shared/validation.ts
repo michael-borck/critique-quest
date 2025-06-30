@@ -125,7 +125,7 @@ export class QualityValidator {
     });
 
     const repetitiveWords = Array.from(wordFreq.entries())
-      .filter(([word, count]) => count > Math.max(3, words.length / 100))
+      .filter(([, count]) => count > Math.max(3, words.length / 100))
       .map(([word]) => word);
 
     if (repetitiveWords.length > 0) {

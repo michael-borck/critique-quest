@@ -2,7 +2,7 @@ import { JsonDB, Config } from 'node-json-db';
 import { join } from 'path';
 import { app } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
-import type { CaseStudy, Collection, AIUsage, PracticeSession } from '../shared/types';
+import type { CaseStudy, Collection, AIUsage, PracticeSession, CaseFilters, UserPreferences } from '../shared/types';
 
 export class DatabaseManager {
   private db: JsonDB | null = null;
@@ -105,7 +105,7 @@ export class DatabaseManager {
     }
   }
 
-  async getCases(filters?: any): Promise<CaseStudy[]> {
+  async getCases(filters?: CaseFilters): Promise<CaseStudy[]> {
     if (!this.db) throw new Error('Database not initialized');
 
     let cases: CaseStudy[] = [];
@@ -132,6 +132,12 @@ export class DatabaseManager {
 
     if (filters.favorite) {
       filteredCases = filteredCases.filter(c => c.is_favorite);
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      filteredCases = filteredCases.filter(c => 
+        filters.tags!.some(tag => c.tags.includes(tag))
+      );
     }
 
     return filteredCases.sort((a, b) => new Date(b.modified_date || 0).getTime() - new Date(a.modified_date || 0).getTime());
@@ -212,11 +218,11 @@ export class DatabaseManager {
     return filtered.sort((a, b) => new Date(b.modified_date || 0).getTime() - new Date(a.modified_date || 0).getTime());
   }
 
-  async getPreferences(): Promise<Record<string, any>> {
+  async getPreferences(): Promise<UserPreferences> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      return (await this.db.getData('/preferences') as unknown) as Record<string, any>;
+      return (await this.db.getData('/preferences') as unknown) as UserPreferences;
     } catch {
       // Return default preferences if none exist
       return {
@@ -237,11 +243,11 @@ export class DatabaseManager {
     }
   }
 
-  async setPreference(key: string, value: any): Promise<void> {
+  async setPreference(key: string, value: unknown): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      const preferences = (await this.db.getData('/preferences') as unknown) as Record<string, any>;
+      const preferences = (await this.db.getData('/preferences') as unknown) as Record<string, unknown>;
       preferences[key] = value;
       await this.db.push('/preferences', preferences);
     } catch {
@@ -269,7 +275,7 @@ export class DatabaseManager {
     await this.db.push('/ai_usage', aiUsageList);
   }
 
-  async savePracticeSession(session: PracticeSession & { analysis?: any }): Promise<number> {
+  async savePracticeSession(session: PracticeSession & { analysis?: unknown }): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
 
     let sessions: PracticeSession[] = [];

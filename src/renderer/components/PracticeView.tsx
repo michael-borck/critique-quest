@@ -13,11 +13,10 @@ import {
   Alert,
   Card,
   CardContent,
-  Divider,
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { Timer, PlayArrow, Stop, NavigateNext, NavigateBefore, Lightbulb } from '@mui/icons-material';
+import { PlayArrow, Stop, NavigateNext, NavigateBefore, Lightbulb } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { PracticeAnalysisDialog } from './PracticeAnalysisDialog';
@@ -163,7 +162,7 @@ export const PracticeView: React.FC = () => {
             Practice Summary
           </Typography>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            You've completed all analysis questions. Review your answers and add any final notes.
+            You&rsquo;ve completed all analysis questions. Review your answers and add any final notes.
           </Typography>
           
           <TextField

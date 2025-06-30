@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,12 +13,10 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Divider,
 } from '@mui/material';
 import {
   Folder,
   Check,
-  Close,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import type { CaseStudy, Collection } from '../../shared/types';
@@ -50,14 +48,7 @@ export const CollectionAssignmentDialog: React.FC<CollectionAssignmentDialogProp
   const [currentAssignments, setCurrentAssignments] = useState<Map<number, number[]>>(new Map());
   const [newAssignments, setNewAssignments] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    if (open) {
-      loadCollections();
-      loadCurrentAssignments();
-    }
-  }, [open, caseStudies]); // Remove loadCollections from dependencies
-
-  const loadCurrentAssignments = async () => {
+  const loadCurrentAssignments = useCallback(async () => {
     const assignments = new Map<number, number[]>();
     
     for (const caseStudy of caseStudies) {
@@ -86,7 +77,14 @@ export const CollectionAssignmentDialog: React.FC<CollectionAssignmentDialogProp
       const caseAssignments = assignments.get(caseStudies[0].id) || [];
       setNewAssignments(new Set(caseAssignments));
     }
-  };
+  }, [caseStudies, getCollectionsByCase, collections]);
+
+  useEffect(() => {
+    if (open) {
+      loadCollections();
+      loadCurrentAssignments();
+    }
+  }, [open, loadCollections, loadCurrentAssignments]);
 
   const handleCollectionToggle = (collectionId: number) => {
     const newSet = new Set(newAssignments);

@@ -21,15 +21,12 @@ import {
   ListItemText,
   Divider,
   Alert,
-  Switch,
-  FormControlLabel,
   CircularProgress,
 } from '@mui/material';
 import {
   ExpandMore,
   CheckCircle,
   TrendingUp,
-  Timer,
   Psychology,
   Assessment,
   Lightbulb,
@@ -38,7 +35,6 @@ import {
 } from '@mui/icons-material';
 import { 
   PracticeAnalysis, 
-  AnswerAnalysis, 
   formatTime, 
   getReadabilityColor, 
   getCompletenessColor 
@@ -124,12 +120,6 @@ export const PracticeAnalysisDialog: React.FC<PracticeAnalysisDialogProps> = ({
 
   if (!analysis) return null;
 
-  const getScoreColor = (score: number, max: number) => {
-    const percentage = score / max;
-    if (percentage >= 0.8) return '#4CAF50';
-    if (percentage >= 0.6) return '#FF9800';
-    return '#F44336';
-  };
 
   return (
     <Dialog

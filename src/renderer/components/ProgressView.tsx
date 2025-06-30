@@ -15,10 +15,9 @@ import {
 import {
   TrendingUp,
   Assessment,
-  Timer,
   School,
 } from '@mui/icons-material';
-import { formatTime } from '../../shared/textAnalysis';
+import { formatTime, PracticeAnalysis } from '../../shared/textAnalysis';
 
 interface PracticeSession {
   id: number;
@@ -27,11 +26,11 @@ interface PracticeSession {
   end_time: string;
   notes: string;
   answers?: string[];
-  analysis?: any;
+  analysis?: PracticeAnalysis;
 }
 
 export const ProgressView: React.FC = () => {
-  const [sessions, setSessions] = useState<PracticeSession[]>([]);
+  const [sessions] = useState<PracticeSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -205,7 +204,7 @@ export const ProgressView: React.FC = () => {
             <Card>
               <CardContent>
                 <List>
-                  {sessions.slice(-10).reverse().map((session, index) => (
+                  {sessions.slice(-10).reverse().map((session) => (
                     <ListItem key={session.id}>
                       <ListItemText
                         primary={`Practice Session ${session.id}`}

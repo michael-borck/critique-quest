@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
-import { Box } from '@mui/material';
+import { Box, SxProps, Theme } from '@mui/material';
 
 interface MarkdownRendererProps {
   content: string;
   maxLines?: number;
-  sx?: any;
+  sx?: SxProps<Theme>;
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ 
@@ -99,7 +99,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   };
 
   return (
-    <Box sx={baseStyles}>
+    <Box sx={baseStyles as SxProps<Theme>}>
       <ReactMarkdown
         rehypePlugins={[rehypeHighlight]}
       >

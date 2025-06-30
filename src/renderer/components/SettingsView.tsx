@@ -24,6 +24,12 @@ import { ExpandMore, Save, Key, MenuBook } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { documentationService } from '../services/documentationService';
 
+interface OllamaModel {
+  name: string;
+  size?: number;
+  modified_at?: string;
+}
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -39,7 +45,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 };
 
 export const SettingsView: React.FC = () => {
-  const { preferences, setPreferences, loadPreferences } = useAppStore();
+  const { preferences, loadPreferences } = useAppStore();
   const [tabValue, setTabValue] = useState(0);
   const [apiKeys, setApiKeys] = useState({
     openai: '',
@@ -48,7 +54,7 @@ export const SettingsView: React.FC = () => {
   });
   const [ollamaConfig, setOllamaConfig] = useState({
     endpoint: 'http://localhost:11434',
-    models: [] as any[],
+    models: [] as OllamaModel[],
     selectedModel: 'llama2',
   });
   const [generalSettings, setGeneralSettings] = useState({
@@ -123,7 +129,7 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handlePreferenceChange = async (key: string, value: any) => {
+  const handlePreferenceChange = async (key: string, value: string | number | boolean | object) => {
     try {
       await window.electronAPI.setPreference(key, value);
       await loadPreferences(); // Reload to update global state
@@ -413,7 +419,7 @@ export const SettingsView: React.FC = () => {
                     >
                       {ollamaConfig.models.map((model) => (
                         <MenuItem key={model.name} value={model.name}>
-                          {model.name} ({(model.size / 1024 / 1024 / 1024).toFixed(1)}GB)
+                          {model.name} ({((model.size || 0) / 1024 / 1024 / 1024).toFixed(1)}GB)
                         </MenuItem>
                       ))}
                     </Select>

@@ -6,7 +6,6 @@ import {
   CardContent,
   CardActions,
   Button,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -17,7 +16,6 @@ import {
   Select,
   MenuItem,
   Chip,
-  Grid,
   Alert,
   CircularProgress,
 } from '@mui/material';
@@ -26,15 +24,15 @@ import {
   Edit,
   Delete,
   Folder,
-  FolderOpen,
-  Description,
   Visibility,
-  ExpandMore,
-  ChevronRight,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { CollectionContentDialog } from './CollectionContentDialog';
 import type { Collection } from '../../shared/types';
+
+interface CollectionWithChildren extends Collection {
+  children: Collection[];
+}
 
 export const CollectionManager: React.FC = () => {
   const {
@@ -60,7 +58,7 @@ export const CollectionManager: React.FC = () => {
 
   useEffect(() => {
     loadCollections();
-  }, []); // Run only once on mount
+  }, [loadCollections]);
 
   const handleCreateCollection = () => {
     setFormData({
@@ -262,12 +260,13 @@ export const CollectionManager: React.FC = () => {
   const renderCollectionTree = () => {
     const tree = buildCollectionTree();
     
-    const renderNode = (node: any, level: number = 0): React.ReactElement[] => {
+    const renderNode = (node: CollectionWithChildren, level: number = 0): React.ReactElement[] => {
       const result = [renderCollectionCard(node, level)];
       
       if (node.children && node.children.length > 0) {
-        node.children.forEach((child: any) => {
-          result.push(...renderNode(child, level + 1));
+        node.children.forEach((child: Collection) => {
+          const childWithChildren: CollectionWithChildren = { ...child, children: [] };
+          result.push(...renderNode(childWithChildren, level + 1));
         });
       }
       

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import {
   PlayArrow,
-  Visibility,
   GetApp,
   Delete,
   Star,
@@ -44,7 +43,6 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
 }) => {
   const {
     getCasesByCollection,
-    setCurrentCase,
     updateCase,
     deleteCase,
     removeCaseFromCollection,
@@ -58,13 +56,7 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [caseToEdit, setCaseToEdit] = useState<CaseStudy | null>(null);
 
-  useEffect(() => {
-    if (open && collection?.id) {
-      loadCollectionCases();
-    }
-  }, [open, collection?.id]);
-
-  const loadCollectionCases = async () => {
+  const loadCollectionCases = useCallback(async () => {
     if (!collection?.id) return;
 
     setLoading(true);
@@ -78,7 +70,13 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
     } finally {
       setLoading(false);
     }
-  };
+  }, [collection?.id, getCasesByCollection]);
+
+  useEffect(() => {
+    if (open && collection?.id) {
+      loadCollectionCases();
+    }
+  }, [open, collection?.id, loadCollectionCases]);
 
   const handleToggleFavorite = async (caseStudy: CaseStudy) => {
     const updatedCase = { ...caseStudy, is_favorite: !caseStudy.is_favorite };
@@ -141,7 +139,7 @@ export const CollectionContentDialog: React.FC<CollectionContentDialogProps> = (
     setShowEditDialog(true);
   };
 
-  const handleEditSave = (updatedCase: CaseStudy) => {
+  const handleEditSave = () => {
     // Reload collection cases after edit
     loadCollectionCases();
     setShowEditDialog(false);

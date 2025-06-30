@@ -19,9 +19,6 @@ import {
   Alert,
   CircularProgress,
   Autocomplete,
-  Checkbox,
-  ListItemText,
-  Divider,
 } from '@mui/material';
 import { ExpandMore, AutoAwesome, Save, Lightbulb, Casino } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
@@ -72,7 +69,7 @@ export const GenerationView: React.FC = () => {
   const [selectedPersonalSkills, setSelectedPersonalSkills] = useState<string[]>([]);
   const [expertMode, setExpertMode] = useState<boolean>(false);
 
-  const handleInputChange = (field: keyof GenerationInput, value: any) => {
+  const handleInputChange = (field: keyof GenerationInput, value: string | GenerationInput['include_elements']) => {
     setInput(prev => ({ ...prev, [field]: value }));
     
     // Clear domain-specific concepts when domain changes
@@ -111,14 +108,6 @@ export const GenerationView: React.FC = () => {
 
     setError('');
     try {
-      const provider = preferences?.default_ai_provider || 'openai';
-      let model = preferences?.default_ai_model || 'gpt-4';
-      
-      // Use appropriate model for Ollama
-      if (provider === 'ollama') {
-        model = preferences?.default_ollama_model || preferences?.default_ai_model || 'llama2';
-      }
-      
       await generateCase(input);
     } catch (err) {
       setError('Failed to generate case study. Please check your AI configuration.');
@@ -440,7 +429,7 @@ export const GenerationView: React.FC = () => {
                       </Button>
                     </Box>
                     <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                      💡 Need inspiration? Use "AI Suggest" to generate a context based on your selected domain, complexity, and scenario type.
+                      💡 Need inspiration? Use &ldquo;AI Suggest&rdquo; to generate a context based on your selected domain, complexity, and scenario type.
                     </Typography>
                   </>
                 )}
@@ -591,7 +580,7 @@ export const GenerationView: React.FC = () => {
                 color="secondary"
                 size="large"
               >
-                I'm Feeling Lucky
+                I&rsquo;m Feeling Lucky
               </Button>
 
               {currentCase && (
@@ -653,7 +642,7 @@ export const GenerationView: React.FC = () => {
               </Box>
             ) : (
               <Typography color="textSecondary">
-                Configure your case study parameters and click "Generate" to create content.
+                Configure your case study parameters and click &ldquo;Generate&rdquo; to create content.
               </Typography>
             )}
           </Paper>

@@ -92,7 +92,7 @@ export interface UserPreferences {
   default_ollama_model?: string;
   api_keys: Record<string, string>;
   default_generation_settings: Partial<GenerationInput>;
-  default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings';
+  default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings' | 'about' | 'legal';
   ollama_endpoint?: string;
   enable_practice_ai_analysis?: boolean;
   enable_high_contrast?: boolean;
@@ -136,4 +136,45 @@ export interface DocumentationFilters {
   userType?: string;
   difficulty?: string;
   tags?: string[];
+}
+
+export interface CaseFilters {
+  domain?: string;
+  complexity?: string;
+  favorite?: boolean;
+  collection_id?: number;
+  tags?: string[];
+}
+
+export interface PracticeContext {
+  caseTitle: string;
+  completionRate: number;
+  totalWordCount: number;
+  averageWordsPerAnswer: number;
+  timeSpent: string;
+  answerSummaries: Array<{
+    question: string;
+    wordCount: number;
+    completeness: string;
+    readabilityLevel: string;
+  }>;
+}
+
+export interface ElectronDialogFilter {
+  name: string;
+  extensions: string[];
+}
+
+export interface ImportResult {
+  cases: CaseStudy[];
+  collectionInfo: {
+    title: string;
+    description: string;
+    total_cases: number;
+    exported_by: string;
+    exported_at: string;
+    version: string;
+  };
+  collections?: Collection[];
+  bundle?: Bundle;
 }

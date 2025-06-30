@@ -25,7 +25,6 @@ import {
   Edit,
   Save,
   Close,
-  Preview,
   Sync,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
@@ -78,7 +77,7 @@ export const CaseStudyEditDialog: React.FC<CaseStudyEditDialogProps> = ({
     }
   }, [caseStudy]);
 
-  const handleFieldChange = (field: keyof CaseStudy, value: any) => {
+  const handleFieldChange = (field: keyof CaseStudy, value: unknown) => {
     if (!editedCase) return;
     
     setEditedCase(prev => ({

@@ -15,7 +15,7 @@ import {
   CheckBoxOutlineBlank,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
-import type { CaseStudy } from '../../shared/types';
+import type { Collection } from '../../shared/types';
 
 interface CollectionSelectorProps {
   value?: number | 'all' | 'organized' | 'unorganized';
@@ -32,13 +32,13 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({
 
   useEffect(() => {
     loadCollections();
-  }, []); // Run only once on mount
+  }, [loadCollections]);
 
   const buildCollectionHierarchy = () => {
     const rootCollections = collections.filter(c => !c.parent_collection_id);
     const childCollections = collections.filter(c => c.parent_collection_id);
 
-    const addChildren = (parentId: number, level: number = 0): any[] => {
+    const addChildren = (parentId: number, level: number = 0): (Collection & { level: number })[] => {
       return childCollections
         .filter(c => c.parent_collection_id === parentId)
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -78,7 +78,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({
       <Select
         value={value}
         label="Filter by Collection"
-        onChange={(e) => onChange(e.target.value as any)}
+        onChange={(e) => onChange(e.target.value as number | 'all' | 'organized' | 'unorganized')}
         renderValue={(selectedValue) => {
           if (selectedValue === 'all') return 'All Cases';
           if (selectedValue === 'organized') return 'Organized Cases';

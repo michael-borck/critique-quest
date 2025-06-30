@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -34,14 +34,7 @@ export const AppFooter: React.FC = () => {
   });
   const [showDetails, setShowDetails] = useState(false);
 
-  useEffect(() => {
-    loadUsageStats();
-    // Set up interval to refresh stats periodically
-    const interval = setInterval(loadUsageStats, 30000); // Every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadUsageStats = async () => {
+  const loadUsageStats = useCallback(async () => {
     try {
       const stats = await window.electronAPI.getUsageStats();
       setUsageStats({
@@ -64,7 +57,14 @@ export const AppFooter: React.FC = () => {
         mostUsedProvider: preferences?.default_ai_provider || 'N/A',
       });
     }
-  };
+  }, [preferences]);
+
+  useEffect(() => {
+    loadUsageStats();
+    // Set up interval to refresh stats periodically
+    const interval = setInterval(loadUsageStats, 30000); // Every 30 seconds
+    return () => clearInterval(interval);
+  }, [loadUsageStats]);
 
   const formatCost = (cost: number) => {
     if (cost === 0) return '$0.00';

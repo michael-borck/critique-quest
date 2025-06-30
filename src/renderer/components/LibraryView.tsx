@@ -58,16 +58,13 @@ export const LibraryView: React.FC = () => {
     searchQuery,
     filters,
     selectedCollectionId,
-    collectionViewMode,
     loadCases,
     loadCollections,
     setSearchQuery,
     setFilters,
     setSelectedCollectionId,
-    setCollectionViewMode,
     updateCase,
     deleteCase,
-    setCurrentCase,
     saveCase,
     getCasesByCollection,
     startPractice,
@@ -97,7 +94,7 @@ export const LibraryView: React.FC = () => {
   useEffect(() => {
     loadCases();
     loadCollections();
-  }, []); // Run only once on mount
+  }, [loadCases, loadCollections]);
 
   // Handle collection filtering
   useEffect(() => {
@@ -111,7 +108,7 @@ export const LibraryView: React.FC = () => {
     };
 
     filterCasesByCollection();
-  }, [selectedCollectionId]); // Remove getCasesByCollection from dependencies
+  }, [selectedCollectionId, getCasesByCollection]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -147,7 +144,7 @@ export const LibraryView: React.FC = () => {
     setShowEditDialog(true);
   };
 
-  const handleEditSave = (updatedCase: CaseStudy) => {
+  const handleEditSave = () => {
     // The saveCase is already called in the dialog, we just need to reload
     loadCases();
     setShowEditDialog(false);
@@ -436,7 +433,7 @@ export const LibraryView: React.FC = () => {
     setDragOverCollection(null);
   };
 
-  const handleCollectionDrop = async (e: React.DragEvent, collectionId: number) => {
+  const handleCollectionDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOverCollection(null);
     
@@ -494,6 +491,14 @@ export const LibraryView: React.FC = () => {
     
     if (filters.favorite && !caseStudy.is_favorite) {
       return false;
+    }
+    
+    // Tag filter - check if case has any of the selected tags
+    if (filters.tags && filters.tags.length > 0) {
+      const hasMatchingTag = filters.tags.some(tag => caseStudy.tags.includes(tag));
+      if (!hasMatchingTag) {
+        return false;
+      }
     }
     
     return true;
@@ -718,8 +723,8 @@ export const LibraryView: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={3}>
               <CollectionSelector
-                value={selectedCollectionId as any || 'all'}
-                onChange={(value) => setSelectedCollectionId(value === 'all' ? null : value as any)}
+                value={typeof selectedCollectionId === 'number' ? selectedCollectionId : 'all'}
+                onChange={(value: number | 'all' | 'organized' | 'unorganized') => setSelectedCollectionId(value === 'all' ? null : (typeof value === 'string' ? null : value))}
               />
             </Grid>
             <Grid item xs={12} sm={3}>
@@ -845,7 +850,7 @@ export const LibraryView: React.FC = () => {
                   key={collection.id}
                   onDragOver={(e) => collection.id && handleCollectionDragOver(e, collection.id)}
                   onDragLeave={handleCollectionDragLeave}
-                  onDrop={(e) => collection.id && handleCollectionDrop(e, collection.id)}
+                  onDrop={(e) => collection.id && handleCollectionDrop(e)}
                   onClick={() => setSelectedCollectionId(collection.id || null)}
                   sx={{
                     p: 2,

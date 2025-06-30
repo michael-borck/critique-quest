@@ -176,7 +176,7 @@ class Application {
       return this.databaseManager.savePracticeSession(session);
     });
 
-    ipcMain.handle('practice:getSessions', async (_, caseId) => {
+    ipcMain.handle('practice:getSessions', async () => {
       // TODO: Implement getting practice sessions for a case
       return [];
     });

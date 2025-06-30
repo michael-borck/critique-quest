@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import axios from 'axios';
-import type { GenerationInput, OllamaModel } from '../shared/types';
+import type { GenerationInput, OllamaModel, PracticeContext } from '../shared/types';
 
 interface AIResponse {
   title: string;
@@ -26,8 +26,8 @@ export class AIService {
 
   private buildPrompt(input: GenerationInput): string {
     const elementsToInclude = Object.entries(input.include_elements)
-      .filter(([_, include]) => include)
-      .map(([element, _]) => element.replace(/_/g, ' '))
+      .filter(([, include]) => include)
+      .map(([element]) => element.replace(/_/g, ' '))
       .join(', ');
 
     const lengthGuidance = {
@@ -210,7 +210,7 @@ Guidelines:
     }
 
     return {
-      title: title.replace(/[:\[\]]/g, '').trim(),
+      title: title.replace(/[:[\]]/g, '').trim(),
       content: content || responseText,
       questions: questions || 'No analysis questions provided.',
       answers: answers || undefined,
@@ -218,7 +218,7 @@ Guidelines:
     };
   }
 
-  async regenerateSection(section: string, context: any): Promise<string> {
+  async regenerateSection(section: string, context: unknown): Promise<string> {
     if (!this.openaiClient) {
       throw new Error('AI client not initialized');
     }
@@ -417,7 +417,7 @@ Example format:
     this.ollamaEndpoint = endpoint;
   }
 
-  async analyzePracticeSession(practiceContext: any, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<string> {
+  async analyzePracticeSession(practiceContext: PracticeContext, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<string> {
     const prompt = `You are an expert educational assessor. Analyze this student's practice session and provide constructive feedback.
 
 Practice Session Details:
@@ -428,7 +428,7 @@ Practice Session Details:
 - Time Spent: ${practiceContext.timeSpent}
 
 Answer Summaries:
-${practiceContext.answerSummaries.map((summary: any, index: number) => `
+${practiceContext.answerSummaries.map((summary, index: number) => `
 Question ${index + 1}: ${summary.question}
 - Word Count: ${summary.wordCount}
 - Completeness: ${summary.completeness}
