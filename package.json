@@ -1,6 +1,6 @@
 {
   "name": "critique-quest",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "AI-Powered Case Study Generator",
   "main": "dist/main/main.js",
   "homepage": "https://github.com/michael-borck/critique-quest",
