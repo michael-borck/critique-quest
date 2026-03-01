@@ -1,5 +1,9 @@
 # CritiqueQuest
 
+<!-- BADGES:START -->
+[![ai-generation](https://img.shields.io/badge/-ai--generation-blue?style=flat-square)](https://github.com/topics/ai-generation) [![case-studies](https://img.shields.io/badge/-case--studies-blue?style=flat-square)](https://github.com/topics/case-studies) [![cli-tool](https://img.shields.io/badge/-cli--tool-blue?style=flat-square)](https://github.com/topics/cli-tool) [![critical-thinking](https://img.shields.io/badge/-critical--thinking-blue?style=flat-square)](https://github.com/topics/critical-thinking) [![education](https://img.shields.io/badge/-education-blue?style=flat-square)](https://github.com/topics/education) [![electron](https://img.shields.io/badge/-electron-47848f?style=flat-square)](https://github.com/topics/electron) [![google-gemini](https://img.shields.io/badge/-google--gemini-blue?style=flat-square)](https://github.com/topics/google-gemini) [![gpt-4](https://img.shields.io/badge/-gpt--4-blue?style=flat-square)](https://github.com/topics/gpt-4) [![local-models](https://img.shields.io/badge/-local--models-blue?style=flat-square)](https://github.com/topics/local-models) [![machine-learning](https://img.shields.io/badge/-machine--learning-ff6f00?style=flat-square)](https://github.com/topics/machine-learning)
+<!-- BADGES:END -->
+
 *Every case, a new discovery*
 
 Desktop application for generating AI-powered educational case studies with support for OpenAI, Anthropic, Google Gemini, and local Ollama models.
