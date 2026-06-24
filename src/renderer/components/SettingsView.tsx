@@ -51,9 +51,12 @@ export const SettingsView: React.FC = () => {
     openai: '',
     google: '',
     anthropic: '',
+    'openai-compatible': '',
   });
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState('');
   const [ollamaConfig, setOllamaConfig] = useState({
     endpoint: 'http://localhost:11434',
+    bearer: '',
     models: [] as OllamaModel[],
     selectedModel: 'llama2',
   });
@@ -80,8 +83,10 @@ export const SettingsView: React.FC = () => {
       setApiKeys({
         openai: preferences.api_keys?.openai || '',
         google: preferences.api_keys?.google || '',
-        anthropic: preferences.api_keys?.anthropic || ''
+        anthropic: preferences.api_keys?.anthropic || '',
+        'openai-compatible': preferences.api_keys?.['openai-compatible'] || ''
       });
+      setOpenaiBaseUrl(preferences.openai_base_url || '');
       setGeneralSettings({
         theme: preferences.theme || 'light',
         default_ai_provider: preferences.default_ai_provider || 'openai',
@@ -97,6 +102,7 @@ export const SettingsView: React.FC = () => {
       setOllamaConfig(prev => ({
         ...prev,
         endpoint: preferences.ollama_endpoint || 'http://localhost:11434',
+        bearer: preferences.ollama_bearer || '',
         selectedModel: preferences.default_ollama_model || 'llama2',
       }));
     }
@@ -110,8 +116,10 @@ export const SettingsView: React.FC = () => {
       await window.electronAPI.setPreference('default_ai_provider', generalSettings.default_ai_provider);
       await window.electronAPI.setPreference('default_ai_model', generalSettings.default_ai_model);
       await window.electronAPI.setPreference('api_keys', apiKeys);
+      await window.electronAPI.setPreference('openai_base_url', openaiBaseUrl);
       await window.electronAPI.setPreference('default_generation_settings', defaultGeneration);
       await window.electronAPI.setPreference('ollama_endpoint', ollamaConfig.endpoint);
+      await window.electronAPI.setPreference('ollama_bearer', ollamaConfig.bearer);
       await window.electronAPI.setPreference('default_ollama_model', ollamaConfig.selectedModel);
 
       // Set Ollama endpoint in the service
@@ -142,14 +150,15 @@ export const SettingsView: React.FC = () => {
     try {
       let result = false;
       if (provider === 'ollama') {
-        result = await window.electronAPI.testConnection('ollama', undefined, ollamaConfig.endpoint);
+        result = await window.electronAPI.testConnection('ollama', ollamaConfig.bearer || undefined, ollamaConfig.endpoint);
       } else {
         const apiKey = apiKeys[provider as keyof typeof apiKeys];
         if (!apiKey) {
           alert('Please enter an API key first');
           return;
         }
-        result = await window.electronAPI.testConnection(provider, apiKey);
+        const endpoint = provider === 'openai-compatible' ? (openaiBaseUrl || undefined) : undefined;
+        result = await window.electronAPI.testConnection(provider, apiKey, endpoint);
       }
       
       if (result) {
@@ -164,7 +173,7 @@ export const SettingsView: React.FC = () => {
 
   const handleLoadOllamaModels = async () => {
     try {
-      const models = await window.electronAPI.getOllamaModels(ollamaConfig.endpoint);
+      const models = await window.electronAPI.getOllamaModels(ollamaConfig.endpoint, ollamaConfig.bearer || undefined);
       setOllamaConfig(prev => ({ ...prev, models }));
       alert(`✅ Loaded ${models.length} models from Ollama`);
     } catch (error) {
@@ -349,6 +358,54 @@ export const SettingsView: React.FC = () => {
               <AccordionSummary expandIcon={<ExpandMore />}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Key sx={{ mr: 1 }} />
+                  <Typography>OpenAI-Compatible Configuration</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Connect to any OpenAI-compatible API (LM Studio, vLLM, OpenRouter, Groq, Together, etc.) by entering its base URL and key.
+                </Typography>
+                <TextField
+                  fullWidth
+                  label="Base URL"
+                  value={openaiBaseUrl}
+                  onChange={(e) => setOpenaiBaseUrl(e.target.value)}
+                  placeholder="https://openrouter.ai/api/v1"
+                  sx={{ mb: 2 }}
+                  helperText="The provider's OpenAI-compatible endpoint, ending in /v1"
+                />
+                <TextField
+                  fullWidth
+                  label="API Key"
+                  type="password"
+                  value={apiKeys['openai-compatible'] || ''}
+                  onChange={(e) => setApiKeys(prev => ({ ...prev, 'openai-compatible': e.target.value }))}
+                  placeholder="sk-..."
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Model"
+                  value={generalSettings.default_ai_model}
+                  onChange={(e) => setGeneralSettings(prev => ({ ...prev, default_ai_model: e.target.value }))}
+                  placeholder="e.g. anthropic/claude-3.5-sonnet"
+                  sx={{ mb: 2 }}
+                  helperText="The exact model id this server expects (used when this provider is selected)"
+                />
+                <Button
+                  variant="outlined"
+                  onClick={() => handleTestConnection('openai-compatible')}
+                  disabled={!apiKeys['openai-compatible'] || !openaiBaseUrl}
+                >
+                  Test Connection
+                </Button>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Key sx={{ mr: 1 }} />
                   <Typography>Anthropic Claude Configuration</Typography>
                 </Box>
               </AccordionSummary>
@@ -391,7 +448,18 @@ export const SettingsView: React.FC = () => {
                   onChange={(e) => setOllamaConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                   placeholder="http://localhost:11434"
                   sx={{ mb: 2 }}
-                  helperText="Default: http://localhost:11434"
+                  helperText="Local default: http://localhost:11434 — or the URL of a remote Ollama"
+                />
+
+                <TextField
+                  fullWidth
+                  label="Bearer Token (optional)"
+                  type="password"
+                  value={ollamaConfig.bearer}
+                  onChange={(e) => setOllamaConfig(prev => ({ ...prev, bearer: e.target.value }))}
+                  placeholder="Only needed for a remote Ollama behind an auth proxy"
+                  sx={{ mb: 2 }}
+                  helperText="Leave blank for a local Ollama"
                 />
 
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
@@ -447,6 +515,7 @@ export const SettingsView: React.FC = () => {
                   onChange={(e) => setGeneralSettings(prev => ({ ...prev, default_ai_provider: e.target.value }))}
                 >
                   <MenuItem value="openai">OpenAI</MenuItem>
+                  <MenuItem value="openai-compatible">OpenAI-Compatible</MenuItem>
                   <MenuItem value="google">Google Gemini</MenuItem>
                   <MenuItem value="anthropic">Anthropic Claude</MenuItem>
                   <MenuItem value="ollama">Ollama (Local AI)</MenuItem>

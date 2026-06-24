@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { countWords } from '../../shared/textAnalysis';
+import { resolveProviderConfig } from '../utils/providerConfig';
 import type { CaseStudy, Collection, GenerationInput, UserPreferences, CaseFilters } from '../../shared/types';
 
 interface AppState {
@@ -161,18 +162,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isGenerating: true });
     try {
       const preferences = get().preferences;
+      const { apiKey, endpoint } = resolveProviderConfig(preferences, provider, model);
 
-      let apiKey;
-
-      if (provider !== 'ollama' && preferences?.api_keys) {
-        apiKey = preferences.api_keys[provider];
-      }
-
-      let endpoint;
-      if (provider === 'ollama' && preferences?.ollama_endpoint) {
-        endpoint = preferences.ollama_endpoint;
-      }
-      
       const result = await window.electronAPI.generateCase(input, provider, model, apiKey, endpoint);
       const newCase: CaseStudy = {
         title: result.title || 'Untitled Case Study',

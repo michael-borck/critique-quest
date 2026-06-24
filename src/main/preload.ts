@@ -19,7 +19,7 @@ const electronAPI = {
     ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType, provider, model, apiKey, endpoint),
   testConnection: (provider: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:testConnection', provider, apiKey, endpoint),
-  getOllamaModels: (endpoint?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint),
+  getOllamaModels: (endpoint?: string, bearer?: string) => ipcRenderer.invoke('ai:getOllamaModels', endpoint, bearer),
   setOllamaEndpoint: (endpoint: string) => ipcRenderer.invoke('ai:setOllamaEndpoint', endpoint),
   analyzePracticeSession: (practiceContext: PracticeContext, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:analyzePracticeSession', practiceContext, provider, model, apiKey, endpoint),

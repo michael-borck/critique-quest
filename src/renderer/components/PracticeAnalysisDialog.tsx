@@ -40,6 +40,7 @@ import {
   getCompletenessColor 
 } from '../../shared/textAnalysis';
 import { useAppStore } from '../store/appStore';
+import { resolveProviderConfig } from '../utils/providerConfig';
 
 interface PracticeAnalysisDialogProps {
   open: boolean;
@@ -99,8 +100,7 @@ export const PracticeAnalysisDialog: React.FC<PracticeAnalysisDialogProps> = ({
         model = preferences?.default_ollama_model || 'llama2';
       }
       
-      const apiKey = provider !== 'ollama' ? preferences?.api_keys?.[provider] : undefined;
-      const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
+      const { apiKey, endpoint } = resolveProviderConfig(preferences, provider, model);
 
       const response = await window.electronAPI.analyzePracticeSession(
         practiceContext,

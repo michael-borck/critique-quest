@@ -152,8 +152,8 @@ class Application {
       return this.aiService.testConnection(provider, apiKey, endpoint);
     });
 
-    ipcMain.handle('ai:getOllamaModels', async (_, endpoint) => {
-      return this.aiService.getOllamaModels(endpoint);
+    ipcMain.handle('ai:getOllamaModels', async (_, endpoint, bearer) => {
+      return this.aiService.getOllamaModels(endpoint, bearer);
     });
 
     ipcMain.handle('ai:setOllamaEndpoint', async (_, endpoint) => {

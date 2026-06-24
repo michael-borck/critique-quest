@@ -94,6 +94,8 @@ export interface UserPreferences {
   default_generation_settings: Partial<GenerationInput>;
   default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings' | 'about' | 'legal';
   ollama_endpoint?: string;
+  ollama_bearer?: string;          // optional auth token for a remote Ollama instance
+  openai_base_url?: string;        // custom base URL for OpenAI-compatible servers
   enable_practice_ai_analysis?: boolean;
   enable_high_contrast?: boolean;
 }

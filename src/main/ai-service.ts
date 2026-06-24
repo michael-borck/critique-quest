@@ -27,23 +27,39 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models
 
 export class AIService {
   private openaiClient: OpenAI | null = null;
-  private openaiKey: string | null = null;
+  private openaiClientId: string | null = null;
   private ollamaEndpoint: string = 'http://localhost:11434';
 
   constructor() {
     // Clients will be initialized when needed
   }
 
-  // Returns an OpenAI client for the given key, recreating it if the key has
-  // changed since the last call (so updating the key in Settings takes effect).
-  private getOpenAIClient(apiKey?: string): OpenAI {
+  // System-wide fallback keys/endpoints (e.g. set by a self-hosted server's
+  // environment) used when a user hasn't supplied their own in Settings.
+  private envKey(provider: string): string | undefined {
+    switch (provider.toLowerCase()) {
+      case 'anthropic': return process.env.ANTHROPIC_API_KEY;
+      case 'google':
+      case 'gemini': return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      case 'ollama': return process.env.OLLAMA_API_KEY;
+      case 'openai':
+      default: return process.env.OPENAI_API_KEY;
+    }
+  }
+
+  // Returns an OpenAI-compatible client for the given key + base URL, recreating
+  // it when either changes. A custom baseURL covers any OpenAI-compatible server
+  // (LM Studio, vLLM, OpenRouter, Groq, etc.).
+  private getOpenAIClient(apiKey?: string, baseURL?: string): OpenAI {
     const key = apiKey || process.env.OPENAI_API_KEY;
+    const url = baseURL || process.env.OPENAI_BASE_URL || undefined;
     if (!key) {
       throw new Error('OpenAI API key not configured. Please add your API key in Settings.');
     }
-    if (!this.openaiClient || this.openaiKey !== key) {
-      this.openaiClient = new OpenAI({ apiKey: key });
-      this.openaiKey = key;
+    const id = `${url || 'default'}|${key}`;
+    if (!this.openaiClient || this.openaiClientId !== id) {
+      this.openaiClient = new OpenAI({ apiKey: key, baseURL: url });
+      this.openaiClientId = id;
     }
     return this.openaiClient;
   }
@@ -106,17 +122,22 @@ Guidelines:
     const { provider, model, apiKey, endpoint, system, prompt, maxTokens } = opts;
     const temperature = opts.temperature ?? 0.7;
 
+    const key = apiKey || this.envKey(provider);
     switch (provider.toLowerCase()) {
       case 'ollama':
-        return this.generateWithOllama(`${system}\n\n${prompt}`, model, endpoint, maxTokens, temperature);
+        // For remote Ollama, `key` is an optional bearer token and `endpoint`
+        // the remote base URL.
+        return this.generateWithOllama(`${system}\n\n${prompt}`, model, endpoint, key, maxTokens, temperature);
       case 'anthropic':
-        return this.generateWithAnthropic(system, prompt, model, apiKey, maxTokens, temperature);
+        return this.generateWithAnthropic(system, prompt, model, key, maxTokens, temperature);
       case 'google':
       case 'gemini':
-        return this.generateWithGemini(system, prompt, model, apiKey, maxTokens, temperature);
+        return this.generateWithGemini(system, prompt, model, key, maxTokens, temperature);
       case 'openai':
+      case 'openai-compatible':
       default:
-        return this.generateWithOpenAI(system, prompt, model, apiKey, maxTokens, temperature);
+        // `endpoint` is the optional custom base URL for OpenAI-compatible servers.
+        return this.generateWithOpenAI(system, prompt, model, key, endpoint, maxTokens, temperature);
     }
   }
 
@@ -125,10 +146,11 @@ Guidelines:
     prompt: string,
     model: string,
     apiKey: string | undefined,
+    baseURL: string | undefined,
     maxTokens: number,
     temperature: number,
   ): Promise<string> {
-    const client = this.getOpenAIClient(apiKey);
+    const client = this.getOpenAIClient(apiKey, baseURL);
     try {
       const completion = await client.chat.completions.create({
         model,
@@ -248,10 +270,20 @@ Guidelines:
     }
   }
 
+  // Build Ollama request headers, adding a bearer token when one is configured
+  // (for a remote Ollama instance protected by an auth proxy).
+  private ollamaHeaders(bearer?: string): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = bearer || process.env.OLLAMA_API_KEY;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  }
+
   private async generateWithOllama(
     prompt: string,
     model: string,
     endpoint: string | undefined,
+    bearer: string | undefined,
     maxTokens: number,
     temperature: number,
   ): Promise<string> {
@@ -269,9 +301,7 @@ Guidelines:
         },
       }, {
         timeout: 120000, // 2 minutes timeout for local models
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.ollamaHeaders(bearer),
       });
 
       const responseText = response.data.response;
@@ -421,11 +451,18 @@ Example format:
     try {
       switch (provider.toLowerCase()) {
         case 'ollama':
-          return await this.testOllamaConnection(endpoint);
+          return await this.testOllamaConnection(endpoint, apiKey);
+        case 'openai':
+        case 'openai-compatible': {
+          // Listing models avoids guessing a model name that may not exist on a
+          // custom OpenAI-compatible server.
+          const client = this.getOpenAIClient(apiKey || this.envKey(provider), endpoint);
+          await client.models.list();
+          return true;
+        }
         case 'anthropic':
         case 'google':
         case 'gemini':
-        case 'openai':
         default:
           await this.generateText({
             provider,
@@ -458,11 +495,12 @@ Example format:
     }
   }
 
-  private async testOllamaConnection(endpoint?: string): Promise<boolean> {
+  private async testOllamaConnection(endpoint?: string, bearer?: string): Promise<boolean> {
     try {
       const ollamaUrl = endpoint || this.ollamaEndpoint;
       const response = await axios.get(`${ollamaUrl}/api/tags`, {
-        timeout: 5000
+        timeout: 5000,
+        headers: this.ollamaHeaders(bearer),
       });
 
       return response.status === 200;
@@ -473,11 +511,12 @@ Example format:
   }
 
   // Get available Ollama models
-  async getOllamaModels(endpoint?: string): Promise<OllamaModel[]> {
+  async getOllamaModels(endpoint?: string, bearer?: string): Promise<OllamaModel[]> {
     try {
       const ollamaUrl = endpoint || this.ollamaEndpoint;
       const response = await axios.get(`${ollamaUrl}/api/tags`, {
-        timeout: 10000
+        timeout: 10000,
+        headers: this.ollamaHeaders(bearer),
       });
 
       return response.data.models || [];

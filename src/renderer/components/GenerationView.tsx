@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { ExpandMore, AutoAwesome, Save, Lightbulb, Casino } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
+import { resolveProviderConfig } from '../utils/providerConfig';
 import type { GenerationInput } from '../../shared/types';
 import { 
   getCategories,
@@ -137,8 +138,7 @@ export const GenerationView: React.FC = () => {
         model = preferences?.default_ollama_model || 'llama2';
       }
       
-      const apiKey = provider !== 'ollama' ? preferences?.api_keys?.[provider] : undefined;
-      const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
+      const { apiKey, endpoint } = resolveProviderConfig(preferences, provider, model);
       
       const suggestedContext = await window.electronAPI.suggestContext(
         input.domain,
@@ -208,8 +208,7 @@ export const GenerationView: React.FC = () => {
         model = preferences?.default_ollama_model || 'llama2';
       }
       
-      const apiKey = provider !== 'ollama' ? preferences?.api_keys?.[provider] : undefined;
-      const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
+      const { apiKey, endpoint } = resolveProviderConfig(preferences, provider, model);
       
       const suggestedContext = await window.electronAPI.suggestContext(
         randomCategory,
