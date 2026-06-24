@@ -24,8 +24,8 @@ async function main(): Promise<void> {
   const db = openDatabase(join(dataDir, 'critiquequest.db'));
   const secretBox = new EnvSecretBox(secret);
 
-  // The built web client; served as static files with SPA fallback.
-  const distDir = process.env.WEB_DIST || join(__dirname, '../renderer');
+  // The built web client (vite WEB=1 build); served as static with SPA fallback.
+  const distDir = process.env.WEB_DIST || join(__dirname, '../web');
 
   const app = buildServer({
     db,

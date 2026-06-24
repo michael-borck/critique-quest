@@ -1,7 +1,8 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { basename, extname } from 'path';
 import type { DB } from './db';
 import type { SecretBox } from '../core/secret-box';
 import { AIService, FileService } from '../core';
@@ -103,6 +104,41 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
     } catch (e) {
       req.log.error(e);
       return reply.code(500).send({ error: e instanceof Error ? e.message : 'Request failed' });
+    }
+  });
+
+  // --- File export: generate server-side, stream back as a download ---
+  const EXPORT_MIME: Record<string, string> = {
+    '.pdf': 'application/pdf',
+    '.html': 'text/html',
+    '.rtf': 'application/rtf',
+    '.txt': 'text/plain',
+    '.json': 'application/json',
+    '.md': 'text/markdown',
+  };
+
+  app.post('/api/export', async (req, reply) => {
+    const user = currentUser(req);
+    if (!user) return reply.code(401).send({ error: 'Not authenticated' });
+    const body = (req.body ?? {}) as {
+      kind?: string; format?: string; caseData?: unknown; caseStudies?: unknown; collections?: unknown; filename?: string;
+    };
+    try {
+      let path: string;
+      if (body.kind === 'bulk') {
+        path = await files.exportBulkCases(body.caseStudies as never, body.format as string);
+      } else if (body.kind === 'bundle') {
+        path = await files.exportBundle(body.collections as never, body.caseStudies as never, body.filename as string);
+      } else {
+        path = await files.exportCase(body.caseData as never, body.format as string);
+      }
+      const name = basename(path);
+      reply.header('Content-Disposition', `attachment; filename="${name}"`);
+      reply.type(EXPORT_MIME[extname(path).toLowerCase()] || 'application/octet-stream');
+      return reply.send(readFileSync(path));
+    } catch (e) {
+      req.log.error(e);
+      return reply.code(500).send({ error: e instanceof Error ? e.message : 'Export failed' });
     }
   });
 
