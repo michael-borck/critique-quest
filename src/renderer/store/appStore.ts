@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { countWords } from '../../shared/textAnalysis';
 import type { CaseStudy, Collection, GenerationInput, UserPreferences, CaseFilters } from '../../shared/types';
 
 interface AppState {
@@ -160,19 +161,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isGenerating: true });
     try {
       const preferences = get().preferences;
-      console.log('Generation attempt:', { provider, model, preferences });
-      
+
       let apiKey;
-      
+
       if (provider !== 'ollama' && preferences?.api_keys) {
         apiKey = preferences.api_keys[provider];
-        console.log('Using API key for provider:', provider, !!apiKey);
       }
-      
-      if (provider === 'ollama') {
-        console.log('Using Ollama with model:', model);
-      }
-      
+
       let endpoint;
       if (provider === 'ollama' && preferences?.ollama_endpoint) {
         endpoint = preferences.ollama_endpoint;
@@ -189,7 +184,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         answers: result.answers,
         tags: result.tags || [],
         is_favorite: false,
-        word_count: result.content.split(' ').length,
+        word_count: countWords(result.content),
         usage_count: 0
       };
       

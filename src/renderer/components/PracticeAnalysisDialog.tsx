@@ -99,7 +99,7 @@ export const PracticeAnalysisDialog: React.FC<PracticeAnalysisDialogProps> = ({
         model = preferences?.default_ollama_model || 'llama2';
       }
       
-      const apiKey = provider === 'openai' ? preferences?.api_keys?.openai : undefined;
+      const apiKey = provider !== 'ollama' ? preferences?.api_keys?.[provider] : undefined;
       const endpoint = provider === 'ollama' ? preferences?.ollama_endpoint : undefined;
 
       const response = await window.electronAPI.analyzePracticeSession(

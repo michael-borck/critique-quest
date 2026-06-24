@@ -1,6 +1,6 @@
 import { JsonDB, Config } from 'node-json-db';
 import { join } from 'path';
-import { app } from 'electron';
+import { app, safeStorage } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
 import type { CaseStudy, Collection, AIUsage, PracticeSession, CaseFilters, UserPreferences } from '../shared/types';
 
@@ -22,6 +22,40 @@ export class DatabaseManager {
   async initialize(): Promise<void> {
     this.db = new JsonDB(new Config(this.dbPath, true, false, '/'));
     await this.setupDefaults();
+  }
+
+  // API keys are encrypted at rest with the OS keychain (Electron safeStorage)
+  // so they never sit in plaintext in the database file. Values are stored as
+  // "enc:<base64>"; legacy plaintext values are tolerated on read and upgraded
+  // on the next save. If encryption is unavailable (e.g. Linux without a
+  // keyring) keys fall back to plaintext.
+  private readonly ENC_PREFIX = 'enc:';
+
+  private encryptApiKeys(keys: Record<string, string>): Record<string, string> {
+    const out: Record<string, string> = {};
+    const available = safeStorage.isEncryptionAvailable();
+    for (const [name, value] of Object.entries(keys || {})) {
+      if (!value) { out[name] = ''; continue; }
+      if (value.startsWith(this.ENC_PREFIX) || !available) { out[name] = value; continue; }
+      out[name] = this.ENC_PREFIX + safeStorage.encryptString(value).toString('base64');
+    }
+    return out;
+  }
+
+  private decryptApiKeys(keys: Record<string, string>): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [name, value] of Object.entries(keys || {})) {
+      if (typeof value === 'string' && value.startsWith(this.ENC_PREFIX)) {
+        try {
+          out[name] = safeStorage.decryptString(Buffer.from(value.slice(this.ENC_PREFIX.length), 'base64'));
+        } catch {
+          out[name] = '';
+        }
+      } else {
+        out[name] = value; // legacy plaintext
+      }
+    }
+    return out;
   }
 
   private async setupDefaults(): Promise<void> {
@@ -105,6 +139,23 @@ export class DatabaseManager {
     }
   }
 
+  // Serializes read-modify-write operations. node-json-db rewrites the whole
+  // file on every push and has no locking, so two concurrent IPC writes could
+  // otherwise read the same array and clobber each other's changes. All
+  // mutating methods run through this queue so they execute one at a time.
+  private writeChain: Promise<unknown> = Promise.resolve();
+  private serialize<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.writeChain.then(task, task);
+    this.writeChain = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  // Next monotonic id without spreading the array into Math.max (which can blow
+  // the call stack for large collections).
+  private nextId(items: Array<{ id?: number }>): number {
+    return items.reduce((max, item) => Math.max(max, item.id || 0), 0) + 1;
+  }
+
   async getCases(filters?: CaseFilters): Promise<CaseStudy[]> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -145,57 +196,61 @@ export class DatabaseManager {
 
   async saveCase(caseData: CaseStudy): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let cases: CaseStudy[] = [];
+      try {
+        cases = (await db.getData('/cases') as unknown) as CaseStudy[];
+      } catch {
+        // Initialize cases array if it doesn't exist
+        await db.push('/cases', [], false);
+        cases = [];
+      }
+      const now = new Date().toISOString();
 
-    let cases: CaseStudy[] = [];
-    try {
-      cases = (await this.db.getData('/cases') as unknown) as CaseStudy[];
-    } catch {
-      // Initialize cases array if it doesn't exist
-      await this.db.push('/cases', [], false);
-      cases = [];
-    }
-    const now = new Date().toISOString();
-
-    if (caseData.id) {
-      // Update existing case
-      const index = cases.findIndex(c => c.id === caseData.id);
-      if (index >= 0) {
-        cases[index] = {
+      if (caseData.id) {
+        // Update existing case
+        const index = cases.findIndex(c => c.id === caseData.id);
+        if (index >= 0) {
+          cases[index] = {
+            ...caseData,
+            modified_date: now
+          };
+          await db.push('/cases', cases);
+          return caseData.id;
+        }
+        throw new Error('Case not found');
+      } else {
+        // Insert new case
+        const newId = this.nextId(cases);
+        const newCase: CaseStudy = {
           ...caseData,
+          id: newId,
+          created_date: now,
           modified_date: now
         };
-        await this.db.push('/cases', cases);
-        return caseData.id;
+
+        cases.push(newCase);
+        await db.push('/cases', cases);
+        return newId;
       }
-      throw new Error('Case not found');
-    } else {
-      // Insert new case
-      const newId = cases.length > 0 ? Math.max(...cases.map(c => c.id || 0)) + 1 : 1;
-      const newCase: CaseStudy = {
-        ...caseData,
-        id: newId,
-        created_date: now,
-        modified_date: now
-      };
-      
-      cases.push(newCase);
-      await this.db.push('/cases', cases);
-      return newId;
-    }
+    });
   }
 
   async deleteCase(id: number): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
-
-    let cases: CaseStudy[] = [];
-    try {
-      cases = (await this.db.getData('/cases') as unknown) as CaseStudy[];
-    } catch {
-      // No cases to delete
-      return;
-    }
-    const filteredCases = cases.filter(c => c.id !== id);
-    await this.db.push('/cases', filteredCases);
+    return this.serialize(async () => {
+      const db = this.db!;
+      let cases: CaseStudy[] = [];
+      try {
+        cases = (await db.getData('/cases') as unknown) as CaseStudy[];
+      } catch {
+        // No cases to delete
+        return;
+      }
+      const filteredCases = cases.filter(c => c.id !== id);
+      await db.push('/cases', filteredCases);
+    });
   }
 
   async searchCases(query: string): Promise<CaseStudy[]> {
@@ -222,7 +277,11 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      return (await this.db.getData('/preferences') as unknown) as UserPreferences;
+      const prefs = (await this.db.getData('/preferences') as unknown) as UserPreferences;
+      if (prefs.api_keys) {
+        prefs.api_keys = this.decryptApiKeys(prefs.api_keys);
+      }
+      return prefs;
     } catch {
       // Return default preferences if none exist
       return {
@@ -245,56 +304,79 @@ export class DatabaseManager {
 
   async setPreference(key: string, value: unknown): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
-
-    try {
-      const preferences = (await this.db.getData('/preferences') as unknown) as Record<string, unknown>;
-      preferences[key] = value;
-      await this.db.push('/preferences', preferences);
-    } catch {
-      await this.db.push('/preferences', { [key]: value });
-    }
+    return this.serialize(async () => {
+      const db = this.db!;
+      const storedValue = key === 'api_keys' && value && typeof value === 'object'
+        ? this.encryptApiKeys(value as Record<string, string>)
+        : value;
+      try {
+        const preferences = (await db.getData('/preferences') as unknown) as Record<string, unknown>;
+        preferences[key] = storedValue;
+        await db.push('/preferences', preferences);
+      } catch {
+        await db.push('/preferences', { [key]: storedValue });
+      }
+    });
   }
 
   async trackAIUsage(usage: AIUsage): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let aiUsageList: AIUsage[] = [];
+      try {
+        aiUsageList = (await db.getData('/ai_usage') as unknown) as AIUsage[];
+      } catch {
+        await db.push('/ai_usage', [], false);
+        aiUsageList = [];
+      }
+      const newUsage: AIUsage = {
+        ...usage,
+        id: this.nextId(aiUsageList),
+        timestamp: new Date().toISOString()
+      };
 
-    let aiUsageList: AIUsage[] = [];
-    try {
-      aiUsageList = (await this.db.getData('/ai_usage') as unknown) as AIUsage[];
-    } catch {
-      await this.db.push('/ai_usage', [], false);
-      aiUsageList = [];
-    }
-    const newUsage: AIUsage = {
-      ...usage,
-      id: aiUsageList.length > 0 ? Math.max(...aiUsageList.map(u => u.id || 0)) + 1 : 1,
-      timestamp: new Date().toISOString()
-    };
-    
-    aiUsageList.push(newUsage);
-    await this.db.push('/ai_usage', aiUsageList);
+      aiUsageList.push(newUsage);
+      await db.push('/ai_usage', aiUsageList);
+    });
   }
 
   async savePracticeSession(session: PracticeSession & { analysis?: unknown }): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let sessions: PracticeSession[] = [];
+      try {
+        sessions = (await db.getData('/practice_sessions') as unknown) as PracticeSession[];
+      } catch {
+        await db.push('/practice_sessions', [], false);
+        sessions = [];
+      }
+      const newId = this.nextId(sessions);
+
+      const newSession: PracticeSession = {
+        ...session,
+        id: newId
+      };
+
+      sessions.push(newSession);
+      await db.push('/practice_sessions', sessions);
+      return newId;
+    });
+  }
+
+  async getPracticeSessions(caseId: number): Promise<PracticeSession[]> {
     if (!this.db) throw new Error('Database not initialized');
 
     let sessions: PracticeSession[] = [];
     try {
       sessions = (await this.db.getData('/practice_sessions') as unknown) as PracticeSession[];
     } catch {
-      await this.db.push('/practice_sessions', [], false);
-      sessions = [];
+      return [];
     }
-    const newId = sessions.length > 0 ? Math.max(...sessions.map(s => s.id || 0)) + 1 : 1;
-    
-    const newSession: PracticeSession = {
-      ...session,
-      id: newId
-    };
-    
-    sessions.push(newSession);
-    await this.db.push('/practice_sessions', sessions);
-    return newId;
+    return sessions
+      .filter(s => s.case_id === caseId)
+      .sort((a, b) => new Date(b.start_time || 0).getTime() - new Date(a.start_time || 0).getTime());
   }
 
   // Collection operations
@@ -324,108 +406,115 @@ export class DatabaseManager {
 
   async saveCollection(collectionData: Collection): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let collections: Collection[] = [];
+      try {
+        collections = (await db.getData('/collections') as unknown) as Collection[];
+      } catch {
+        await db.push('/collections', [], false);
+        collections = [];
+      }
 
-    let collections: Collection[] = [];
-    try {
-      collections = (await this.db.getData('/collections') as unknown) as Collection[];
-    } catch {
-      await this.db.push('/collections', [], false);
-      collections = [];
-    }
+      const now = new Date().toISOString();
 
-    const now = new Date().toISOString();
-
-    if (collectionData.id) {
-      // Update existing collection
-      const index = collections.findIndex(c => c.id === collectionData.id);
-      if (index >= 0) {
-        collections[index] = {
+      if (collectionData.id) {
+        // Update existing collection
+        const index = collections.findIndex(c => c.id === collectionData.id);
+        if (index >= 0) {
+          collections[index] = {
+            ...collectionData,
+            modified_date: now
+          };
+          await db.push('/collections', collections);
+          return collectionData.id;
+        }
+        throw new Error('Collection not found');
+      } else {
+        // Insert new collection
+        const newId = this.nextId(collections);
+        const newCollection: Collection = {
           ...collectionData,
+          id: newId,
+          created_date: now,
           modified_date: now
         };
-        await this.db.push('/collections', collections);
-        return collectionData.id;
+
+        collections.push(newCollection);
+        await db.push('/collections', collections);
+        return newId;
       }
-      throw new Error('Collection not found');
-    } else {
-      // Insert new collection
-      const newId = collections.length > 0 ? Math.max(...collections.map(c => c.id || 0)) + 1 : 1;
-      const newCollection: Collection = {
-        ...collectionData,
-        id: newId,
-        created_date: now,
-        modified_date: now
-      };
-      
-      collections.push(newCollection);
-      await this.db.push('/collections', collections);
-      return newId;
-    }
+    });
   }
 
   async deleteCollection(id: number): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      // Remove the collection
+      let collections: Collection[] = [];
+      try {
+        collections = (await db.getData('/collections') as unknown) as Collection[];
+      } catch {
+        return;
+      }
+      const filteredCollections = collections.filter(c => c.id !== id);
 
-    // Remove the collection
-    let collections: Collection[] = [];
-    try {
-      collections = (await this.db.getData('/collections') as unknown) as Collection[];
-    } catch {
-      return;
-    }
-    const filteredCollections = collections.filter(c => c.id !== id);
-    await this.db.push('/collections', filteredCollections);
+      // Remove all case-collection relationships for this collection
+      let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+      try {
+        caseCollections = (await db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+        const filteredCaseCollections = caseCollections.filter(cc => cc.collection_id !== id);
+        await db.push('/case_collections', filteredCaseCollections);
+      } catch {
+        // No relationships to clean up
+      }
 
-    // Remove all case-collection relationships for this collection
-    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
-    try {
-      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
-    } catch {
-      return;
-    }
-    const filteredCaseCollections = caseCollections.filter(cc => cc.collection_id !== id);
-    await this.db.push('/case_collections', filteredCaseCollections);
-
-    // Update parent_collection_id for subcollections (set to null)
-    const updatedCollections = filteredCollections.map(c => 
-      c.parent_collection_id === id ? { ...c, parent_collection_id: undefined } : c
-    );
-    await this.db.push('/collections', updatedCollections);
+      // Update parent_collection_id for subcollections (set to null)
+      const updatedCollections = filteredCollections.map(c =>
+        c.parent_collection_id === id ? { ...c, parent_collection_id: undefined } : c
+      );
+      await db.push('/collections', updatedCollections);
+    });
   }
 
   async addCaseToCollection(caseId: number, collectionId: number): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+      try {
+        caseCollections = (await db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+      } catch {
+        await db.push('/case_collections', [], false);
+        caseCollections = [];
+      }
 
-    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
-    try {
-      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
-    } catch {
-      await this.db.push('/case_collections', [], false);
-      caseCollections = [];
-    }
-
-    // Check if relationship already exists
-    const exists = caseCollections.some(cc => cc.case_id === caseId && cc.collection_id === collectionId);
-    if (!exists) {
-      caseCollections.push({ case_id: caseId, collection_id: collectionId });
-      await this.db.push('/case_collections', caseCollections);
-    }
+      // Check if relationship already exists
+      const exists = caseCollections.some(cc => cc.case_id === caseId && cc.collection_id === collectionId);
+      if (!exists) {
+        caseCollections.push({ case_id: caseId, collection_id: collectionId });
+        await db.push('/case_collections', caseCollections);
+      }
+    });
   }
 
   async removeCaseFromCollection(caseId: number, collectionId: number): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
+    return this.serialize(async () => {
+      const db = this.db!;
+      let caseCollections: Array<{case_id: number, collection_id: number}> = [];
+      try {
+        caseCollections = (await db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
+      } catch {
+        return;
+      }
 
-    let caseCollections: Array<{case_id: number, collection_id: number}> = [];
-    try {
-      caseCollections = (await this.db.getData('/case_collections') as unknown) as Array<{case_id: number, collection_id: number}>;
-    } catch {
-      return;
-    }
-
-    const filteredCaseCollections = caseCollections.filter(cc => 
-      !(cc.case_id === caseId && cc.collection_id === collectionId)
-    );
-    await this.db.push('/case_collections', filteredCaseCollections);
+      const filteredCaseCollections = caseCollections.filter(cc =>
+        !(cc.case_id === caseId && cc.collection_id === collectionId)
+      );
+      await db.push('/case_collections', filteredCaseCollections);
+    });
   }
 
   async getCasesByCollection(collectionId: number): Promise<CaseStudy[]> {

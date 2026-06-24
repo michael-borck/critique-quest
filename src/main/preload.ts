@@ -13,7 +13,8 @@ const electronAPI = {
   // AI operations
   generateCase: (input: GenerationInput, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey, endpoint),
-  regenerateSection: (section: string, context: unknown) => ipcRenderer.invoke('ai:regenerateSection', section, context),
+  regenerateSection: (section: string, context: unknown, provider?: string, model?: string, apiKey?: string, endpoint?: string) =>
+    ipcRenderer.invoke('ai:regenerateSection', section, context, provider, model, apiKey, endpoint),
   suggestContext: (domain: string, complexity: string, scenarioType: string, provider?: string, model?: string, apiKey?: string, endpoint?: string) => 
     ipcRenderer.invoke('ai:suggestContext', domain, complexity, scenarioType, provider, model, apiKey, endpoint),
   testConnection: (provider: string, apiKey?: string, endpoint?: string) => 
@@ -25,7 +26,6 @@ const electronAPI = {
 
   // File operations
   exportCase: (caseData: CaseStudy, format: string) => ipcRenderer.invoke('file:export', caseData, format),
-  importCase: (filePath: string) => ipcRenderer.invoke('file:import', filePath),
   importCaseFromURL: (url: string) => ipcRenderer.invoke('file:importFromURL', url),
   exportBulkCases: (caseStudies: CaseStudy[], format: string) => ipcRenderer.invoke('file:exportBulk', caseStudies, format),
   exportBundle: (collections: Collection[], caseStudies: CaseStudy[], filename: string) => ipcRenderer.invoke('file:exportBundle', collections, caseStudies, filename),

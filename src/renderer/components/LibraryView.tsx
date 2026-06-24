@@ -50,6 +50,7 @@ import { CollectionSelector } from './CollectionSelector';
 import { CollectionManager } from './CollectionManager';
 import { CollectionAssignmentDialog } from './CollectionAssignmentDialog';
 import { CaseStudyEditDialog } from './CaseStudyEditDialog';
+import { countWords } from '../../shared/textAnalysis';
 
 export const LibraryView: React.FC = () => {
   const {
@@ -327,7 +328,7 @@ export const LibraryView: React.FC = () => {
           answers: parsedContent.answers ? String(parsedContent.answers) : undefined,
           tags: Array.isArray(parsedContent.tags) ? parsedContent.tags.map(String) : ['imported', 'file'],
           is_favorite: Boolean(parsedContent.is_favorite || false),
-          word_count: String(parsedContent.content).split(' ').length,
+          word_count: countWords(String(parsedContent.content)),
           usage_count: 0,
           created_date: new Date().toISOString(),
           modified_date: new Date().toISOString(),

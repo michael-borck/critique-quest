@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
 import { join } from 'path';
 import { DatabaseManager } from './database';
 import { AIService } from './ai-service';
@@ -25,10 +25,33 @@ class Application {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
         preload: join(__dirname, 'preload.js'),
       },
       titleBarStyle: 'default',
       show: false,
+    });
+
+    // Open links that try to spawn new windows in the user's default browser
+    // instead of inside the app, and never allow in-app navigation away from
+    // the bundled renderer.
+    this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('https://') || url.startsWith('http://')) {
+        shell.openExternal(url);
+      }
+      return { action: 'deny' };
+    });
+
+    this.mainWindow.webContents.on('will-navigate', (event, url) => {
+      const isDev = process.env.NODE_ENV === 'development';
+      const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
+      const allowed = isDev ? url.startsWith(devUrl) : url.startsWith('file://');
+      if (!allowed) {
+        event.preventDefault();
+        if (url.startsWith('https://') || url.startsWith('http://')) {
+          shell.openExternal(url);
+        }
+      }
     });
 
     if (process.env.NODE_ENV === 'development') {
@@ -46,6 +69,43 @@ class Application {
 
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
+    });
+  }
+
+  private setupContentSecurityPolicy(): void {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    // All outbound network calls (OpenAI, Anthropic, Gemini, Ollama) happen in
+    // the main process, so the renderer only needs to talk to itself. In dev,
+    // Vite's HMR client needs 'unsafe-eval' and a websocket connection.
+    const csp = isDev
+      ? [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self' ws: http://localhost:* http://127.0.0.1:*",
+        ].join('; ')
+      : [
+          "default-src 'self'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "frame-ancestors 'none'",
+        ].join('; ');
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [csp],
+        },
+      });
     });
   }
 
@@ -80,8 +140,8 @@ class Application {
       return this.aiService.generateCaseStudy(input, provider, model, apiKey, endpoint);
     });
 
-    ipcMain.handle('ai:regenerateSection', async (_, section, context) => {
-      return this.aiService.regenerateSection(section, context);
+    ipcMain.handle('ai:regenerateSection', async (_, section, context, provider, model, apiKey, endpoint) => {
+      return this.aiService.regenerateSection(section, context, provider, model, apiKey, endpoint);
     });
 
     ipcMain.handle('ai:suggestContext', async (_, domain, complexity, scenarioType, provider, model, apiKey, endpoint) => {
@@ -107,10 +167,6 @@ class Application {
     // File operations
     ipcMain.handle('file:export', async (_, caseData, format) => {
       return this.fileService.exportCase(caseData, format);
-    });
-
-    ipcMain.handle('file:import', async (_, filePath) => {
-      return this.fileService.importCase(filePath);
     });
 
     ipcMain.handle('file:importFromURL', async (_, url) => {
@@ -176,14 +232,14 @@ class Application {
       return this.databaseManager.savePracticeSession(session);
     });
 
-    ipcMain.handle('practice:getSessions', async () => {
-      // TODO: Implement getting practice sessions for a case
-      return [];
+    ipcMain.handle('practice:getSessions', async (_, caseId) => {
+      return this.databaseManager.getPracticeSessions(caseId);
     });
   }
 
   private async initialize(): Promise<void> {
     await this.databaseManager.initialize();
+    this.setupContentSecurityPolicy();
     this.setupIpcHandlers();
   }
 

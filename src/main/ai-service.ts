@@ -10,18 +10,42 @@ interface AIResponse {
   tags: string[];
 }
 
+interface GenerateTextOptions {
+  provider: string;
+  model: string;
+  apiKey?: string;
+  endpoint?: string;
+  system: string;
+  prompt: string;
+  maxTokens: number;
+  temperature?: number;
+}
+
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_VERSION = '2023-06-01';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
 export class AIService {
   private openaiClient: OpenAI | null = null;
+  private openaiKey: string | null = null;
   private ollamaEndpoint: string = 'http://localhost:11434';
 
   constructor() {
     // Clients will be initialized when needed
   }
 
-  private initializeOpenAI(apiKey: string): void {
-    this.openaiClient = new OpenAI({
-      apiKey: apiKey,
-    });
+  // Returns an OpenAI client for the given key, recreating it if the key has
+  // changed since the last call (so updating the key in Settings takes effect).
+  private getOpenAIClient(apiKey?: string): OpenAI {
+    const key = apiKey || process.env.OPENAI_API_KEY;
+    if (!key) {
+      throw new Error('OpenAI API key not configured. Please add your API key in Settings.');
+    }
+    if (!this.openaiClient || this.openaiKey !== key) {
+      this.openaiClient = new OpenAI({ apiKey: key });
+      this.openaiKey = key;
+    }
+    return this.openaiClient;
   }
 
   private buildPrompt(input: GenerationInput): string {
@@ -74,113 +98,216 @@ Guidelines:
 - Keep the tone professional but accessible`;
   }
 
-  async generateCaseStudy(input: GenerationInput, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<AIResponse> {
+  // Single entry point for all text generation. Routes to the configured
+  // provider and returns the raw text response. Provider-specific endpoints are
+  // passed through per-call (no shared mutable state) so concurrent generations
+  // can't clobber each other.
+  private async generateText(opts: GenerateTextOptions): Promise<string> {
+    const { provider, model, apiKey, endpoint, system, prompt, maxTokens } = opts;
+    const temperature = opts.temperature ?? 0.7;
+
     switch (provider.toLowerCase()) {
       case 'ollama':
-        if (endpoint) {
-          const originalEndpoint = this.ollamaEndpoint;
-          this.ollamaEndpoint = endpoint;
-          const result = await this.generateWithOllama(input, model);
-          this.ollamaEndpoint = originalEndpoint;
-          return result;
-        } else {
-          return this.generateWithOllama(input, model);
-        }
+        return this.generateWithOllama(`${system}\n\n${prompt}`, model, endpoint, maxTokens, temperature);
+      case 'anthropic':
+        return this.generateWithAnthropic(system, prompt, model, apiKey, maxTokens, temperature);
+      case 'google':
+      case 'gemini':
+        return this.generateWithGemini(system, prompt, model, apiKey, maxTokens, temperature);
       case 'openai':
       default:
-        return this.generateWithOpenAI(input, model, apiKey);
+        return this.generateWithOpenAI(system, prompt, model, apiKey, maxTokens, temperature);
     }
   }
 
-  private async generateWithOpenAI(input: GenerationInput, model: string = 'gpt-4', apiKey?: string): Promise<AIResponse> {
-    const key = apiKey || process.env.OPENAI_API_KEY;
-    
-    if (!key) {
-      throw new Error('OpenAI API key not configured. Please add your API key in Settings.');
-    }
-
-    if (!this.openaiClient) {
-      this.initializeOpenAI(key);
-    }
-
-    if (!this.openaiClient) {
-      throw new Error('Failed to initialize OpenAI client');
-    }
-
+  private async generateWithOpenAI(
+    system: string,
+    prompt: string,
+    model: string,
+    apiKey: string | undefined,
+    maxTokens: number,
+    temperature: number,
+  ): Promise<string> {
+    const client = this.getOpenAIClient(apiKey);
     try {
-      const prompt = this.buildPrompt(input);
-      
-      const completion = await this.openaiClient.chat.completions.create({
-        model: model,
+      const completion = await client.chat.completions.create({
+        model,
         messages: [
-          {
-            role: 'system',
-            content: 'You are an expert educational content creator specializing in case studies.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'system', content: system },
+          { role: 'user', content: prompt },
         ],
-        temperature: 0.7,
-        max_tokens: 3000,
+        temperature,
+        max_tokens: maxTokens,
       });
 
       const responseText = completion.choices[0]?.message?.content;
-      
       if (!responseText) {
         throw new Error('No response received from OpenAI');
       }
-
-      return this.parseAIResponse(responseText, input);
+      return responseText;
     } catch (error) {
       console.error('OpenAI Service Error:', error);
-      throw new Error(`Failed to generate case study with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`OpenAI request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private async generateWithOllama(input: GenerationInput, model: string = 'llama2'): Promise<AIResponse> {
+  private async generateWithAnthropic(
+    system: string,
+    prompt: string,
+    model: string,
+    apiKey: string | undefined,
+    maxTokens: number,
+    temperature: number,
+  ): Promise<string> {
+    if (!apiKey) {
+      throw new Error('Anthropic API key not configured. Please add your API key in Settings.');
+    }
     try {
-      const prompt = this.buildPrompt(input);
-      
-      const response = await axios.post(`${this.ollamaEndpoint}/api/generate`, {
-        model: model,
-        prompt: `You are an expert educational content creator specializing in case studies.\n\n${prompt}`,
+      const response = await axios.post(
+        ANTHROPIC_API_URL,
+        {
+          model,
+          max_tokens: maxTokens,
+          temperature,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+        },
+        {
+          timeout: 120000,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': ANTHROPIC_VERSION,
+          },
+        },
+      );
+
+      const blocks = response.data?.content;
+      const responseText = Array.isArray(blocks)
+        ? blocks.filter((b: { type?: string }) => b.type === 'text').map((b: { text?: string }) => b.text || '').join('')
+        : '';
+      if (!responseText) {
+        throw new Error('No response received from Anthropic');
+      }
+      return responseText;
+    } catch (error) {
+      console.error('Anthropic Service Error:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(`Anthropic API error: ${error.response?.data?.error?.message || error.message}`);
+      }
+      throw new Error(`Anthropic request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async generateWithGemini(
+    system: string,
+    prompt: string,
+    model: string,
+    apiKey: string | undefined,
+    maxTokens: number,
+    temperature: number,
+  ): Promise<string> {
+    if (!apiKey) {
+      throw new Error('Google Gemini API key not configured. Please add your API key in Settings.');
+    }
+    try {
+      const url = `${GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent`;
+      const response = await axios.post(
+        url,
+        {
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          },
+        },
+        {
+          timeout: 120000,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+        },
+      );
+
+      const parts = response.data?.candidates?.[0]?.content?.parts;
+      const responseText = Array.isArray(parts)
+        ? parts.map((p: { text?: string }) => p.text || '').join('')
+        : '';
+      if (!responseText) {
+        throw new Error('No response received from Google Gemini');
+      }
+      return responseText;
+    } catch (error) {
+      console.error('Gemini Service Error:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(`Google Gemini API error: ${error.response?.data?.error?.message || error.message}`);
+      }
+      throw new Error(`Google Gemini request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async generateWithOllama(
+    prompt: string,
+    model: string,
+    endpoint: string | undefined,
+    maxTokens: number,
+    temperature: number,
+  ): Promise<string> {
+    const ollamaUrl = endpoint || this.ollamaEndpoint;
+    try {
+      const response = await axios.post(`${ollamaUrl}/api/generate`, {
+        model,
+        prompt,
         stream: false,
         options: {
-          temperature: 0.7,
+          temperature,
           top_p: 0.9,
           top_k: 40,
-        }
+          num_predict: maxTokens,
+        },
       }, {
         timeout: 120000, // 2 minutes timeout for local models
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
 
       const responseText = response.data.response;
-      
       if (!responseText) {
         throw new Error('No response received from Ollama');
       }
-
-      return this.parseAIResponse(responseText, input);
+      return responseText;
     } catch (error) {
       console.error('Ollama Service Error:', error);
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNREFUSED') {
-          throw new Error('Cannot connect to Ollama. Please ensure Ollama is running on http://localhost:11434');
+          throw new Error(`Cannot connect to Ollama. Please ensure Ollama is running on ${ollamaUrl}`);
         }
         throw new Error(`Ollama API error: ${error.response?.data?.error || error.message}`);
       }
-      throw new Error(`Failed to generate case study with Ollama: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to generate with Ollama: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  async generateCaseStudy(input: GenerationInput, provider: string = 'openai', model: string = 'gpt-4', apiKey?: string, endpoint?: string): Promise<AIResponse> {
+    const responseText = await this.generateText({
+      provider,
+      model,
+      apiKey,
+      endpoint,
+      system: 'You are an expert educational content creator specializing in case studies.',
+      prompt: this.buildPrompt(input),
+      maxTokens: 3000,
+      temperature: 0.7,
+    });
+    return this.parseAIResponse(responseText, input);
   }
 
   private parseAIResponse(responseText: string, input?: GenerationInput): AIResponse {
     const sections = responseText.split('**');
-    
+
     let title = 'Untitled Case Study';
     let content = '';
     let questions = '';
@@ -189,7 +316,7 @@ Guidelines:
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i].trim();
-      
+
       if (section.toLowerCase().includes('title')) {
         title = sections[i + 1]?.trim() || title;
       } else if (section.toLowerCase().includes('case study')) {
@@ -218,34 +345,34 @@ Guidelines:
     };
   }
 
-  async regenerateSection(section: string, context: unknown): Promise<string> {
-    if (!this.openaiClient) {
-      throw new Error('AI client not initialized');
-    }
-
+  async regenerateSection(
+    section: string,
+    context: unknown,
+    provider: string = 'openai',
+    model: string = 'gpt-4',
+    apiKey?: string,
+    endpoint?: string,
+  ): Promise<string> {
     const prompt = `Please regenerate the ${section} section of this case study with the following context:
-    
+
 ${JSON.stringify(context, null, 2)}
 
 Make it more engaging and detailed while maintaining the same educational objectives.`;
 
     try {
-      const completion = await this.openaiClient.chat.completions.create({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+      return await this.generateText({
+        provider,
+        model,
+        apiKey,
+        endpoint,
+        system: 'You are an expert educational content creator specializing in case studies.',
+        prompt,
+        maxTokens: 1500,
         temperature: 0.8,
-        max_tokens: 1500,
       });
-
-      return completion.choices[0]?.message?.content || 'Failed to regenerate section';
     } catch (error) {
       console.error('Regeneration Error:', error);
-      throw new Error('Failed to regenerate section');
+      throw new Error(`Failed to regenerate section: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -266,77 +393,19 @@ Example format:
 "[Company Name] is a [size] [industry] company based in [location]... [situation/challenge]..."`;
 
     try {
-      if (provider === 'ollama') {
-        if (endpoint) {
-          const originalEndpoint = this.ollamaEndpoint;
-          this.ollamaEndpoint = endpoint;
-          const result = await this.generateContextWithOllama(prompt, model);
-          this.ollamaEndpoint = originalEndpoint;
-          return result;
-        } else {
-          return await this.generateContextWithOllama(prompt, model);
-        }
-      } else {
-        if (!this.openaiClient && apiKey) {
-          this.initializeOpenAI(apiKey);
-        }
-        
-        if (!this.openaiClient) {
-          throw new Error('AI client not initialized');
-        }
-
-        const completion = await this.openaiClient.chat.completions.create({
-          model: model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-        });
-
-        return completion.choices[0]?.message?.content || 'Failed to generate context suggestion';
-      }
+      return await this.generateText({
+        provider,
+        model,
+        apiKey,
+        endpoint,
+        system: 'You are an expert educational content creator specializing in case studies.',
+        prompt,
+        maxTokens: 500,
+        temperature: 0.7,
+      });
     } catch (error) {
       console.error('Context Suggestion Error:', error);
-      throw new Error('Failed to generate context suggestion');
-    }
-  }
-
-  private async generateContextWithOllama(prompt: string, model: string): Promise<string> {
-    try {
-      const response = await axios.post(`${this.ollamaEndpoint}/api/generate`, {
-        model: model,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          num_predict: 500,
-        }
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const responseText = response.data.response;
-      
-      if (!responseText) {
-        throw new Error('No response received from Ollama');
-      }
-
-      return responseText;
-    } catch (error) {
-      console.error('Ollama Context Generation Error:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNREFUSED') {
-          throw new Error('Cannot connect to Ollama. Please ensure Ollama is running and check your endpoint configuration.');
-        }
-        throw new Error(`Ollama API error: ${error.response?.data?.error || error.message}`);
-      }
-      throw new Error(`Failed to generate context with Ollama: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to generate context suggestion: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -353,9 +422,22 @@ Example format:
       switch (provider.toLowerCase()) {
         case 'ollama':
           return await this.testOllamaConnection(endpoint);
+        case 'anthropic':
+        case 'google':
+        case 'gemini':
         case 'openai':
         default:
-          return await this.testOpenAIConnection(apiKey!);
+          await this.generateText({
+            provider,
+            model: this.defaultTestModel(provider),
+            apiKey,
+            endpoint,
+            system: 'You are a helpful assistant.',
+            prompt: 'Reply with the single word: ok',
+            maxTokens: 5,
+            temperature: 0,
+          });
+          return true;
       }
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -363,20 +445,16 @@ Example format:
     }
   }
 
-  private async testOpenAIConnection(apiKey: string): Promise<boolean> {
-    try {
-      const testClient = new OpenAI({ apiKey });
-      
-      await testClient.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: 'Hello' }],
-        max_tokens: 5,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('OpenAI connection test failed:', error);
-      return false;
+  private defaultTestModel(provider: string): string {
+    switch (provider.toLowerCase()) {
+      case 'anthropic':
+        return 'claude-3-5-haiku-latest';
+      case 'google':
+      case 'gemini':
+        return 'gemini-1.5-flash';
+      case 'openai':
+      default:
+        return 'gpt-3.5-turbo';
     }
   }
 
@@ -386,7 +464,7 @@ Example format:
       const response = await axios.get(`${ollamaUrl}/api/tags`, {
         timeout: 5000
       });
-      
+
       return response.status === 200;
     } catch (error) {
       console.error('Ollama connection test failed:', error);
@@ -401,7 +479,7 @@ Example format:
       const response = await axios.get(`${ollamaUrl}/api/tags`, {
         timeout: 10000
       });
-      
+
       return response.data.models || [];
     } catch (error) {
       console.error('Failed to fetch Ollama models:', error);
@@ -412,7 +490,7 @@ Example format:
     }
   }
 
-  // Set custom Ollama endpoint
+  // Set custom Ollama endpoint (used as the default when a call omits one)
   setOllamaEndpoint(endpoint: string): void {
     this.ollamaEndpoint = endpoint;
   }
@@ -445,46 +523,19 @@ Please provide:
 Keep the feedback constructive, encouraging, and actionable. Focus on learning outcomes and skill development.`;
 
     try {
-      if (provider === 'ollama') {
-        if (endpoint) {
-          const originalEndpoint = this.ollamaEndpoint;
-          this.ollamaEndpoint = endpoint;
-          const result = await this.generateContextWithOllama(prompt, model);
-          this.ollamaEndpoint = originalEndpoint;
-          return result;
-        } else {
-          return await this.generateContextWithOllama(prompt, model);
-        }
-      } else {
-        if (!this.openaiClient && apiKey) {
-          this.initializeOpenAI(apiKey);
-        }
-        
-        if (!this.openaiClient) {
-          throw new Error('AI client not initialized');
-        }
-
-        const completion = await this.openaiClient.chat.completions.create({
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert educational assessor who provides constructive feedback on student practice sessions.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-        });
-
-        return completion.choices[0]?.message?.content || 'Failed to generate practice analysis';
-      }
+      return await this.generateText({
+        provider,
+        model,
+        apiKey,
+        endpoint,
+        system: 'You are an expert educational assessor who provides constructive feedback on student practice sessions.',
+        prompt,
+        maxTokens: 1000,
+        temperature: 0.7,
+      });
     } catch (error) {
       console.error('Practice Analysis Error:', error);
-      throw new Error('Failed to generate practice analysis');
+      throw new Error(`Failed to generate practice analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

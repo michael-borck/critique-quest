@@ -1,1 +1,0 @@
-Testing GitHub Actions trigger - v1.0.2
