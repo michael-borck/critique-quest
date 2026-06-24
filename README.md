@@ -73,6 +73,20 @@ npm run dev
    - **Local AI**: Install Ollama and pull a model (e.g., `ollama pull llama2`)
 4. **Start generating** case studies!
 
+### 🐳 Self-Hosted Web App (Docker)
+
+Prefer a multi-user web app you host yourself? CritiqueQuest also ships a
+self-hosted server (Fastify + SQLite, per-user accounts) from the same codebase:
+
+```bash
+cp .env.example .env   # set CRITIQUEQUEST_SECRET (openssl rand -hex 32)
+docker compose up -d --build
+# open http://localhost:8787 and create the first account
+```
+
+See **[SELF_HOSTING.md](SELF_HOSTING.md)** for configuration, system-wide AI
+keys, and the optional bundled Ollama service.
+
 ## 📖 Usage
 
 ### Generating Case Studies

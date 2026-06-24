@@ -1,0 +1,35 @@
+services:
+  critiquequest:
+    build: .
+    image: critiquequest:latest
+    ports:
+      - "8787:8787"
+    environment:
+      # Required: encrypts stored API keys and signs session cookies. Generate
+      # one with: openssl rand -hex 32
+      CRITIQUEQUEST_SECRET: ${CRITIQUEQUEST_SECRET:?set CRITIQUEQUEST_SECRET in .env}
+      # Open sign-ups. Default (unset/false) lets only the FIRST account register;
+      # after that, create users via the first account or flip this to true.
+      CRITIQUEQUEST_ALLOW_REGISTRATION: ${CRITIQUEQUEST_ALLOW_REGISTRATION:-false}
+      PORT: "8787"
+      DATA_DIR: /data
+      # Point at the bundled Ollama service when running the 'ollama' profile.
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    volumes:
+      - cq-data:/data
+    restart: unless-stopped
+
+  # Optional local AI. Enable with:  docker compose --profile ollama up -d
+  # Then in Settings choose Ollama with endpoint http://ollama:11434
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+
+volumes:
+  cq-data:
+  ollama:

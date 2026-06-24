@@ -1,0 +1,12 @@
+node_modules
+dist
+release
+.git
+.github
+*.md
+!README.md
+data
+*.dmg
+*.exe
+*.AppImage
+.DS_Store
