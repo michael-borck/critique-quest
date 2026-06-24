@@ -1,17 +1,28 @@
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { app, dialog } from 'electron';
 import { jsPDF } from 'jspdf';
 import axios from 'axios';
 import { countWords } from '../shared/textAnalysis';
 import { escapeHtml } from '../shared/html';
 import { assertPublicUrl } from './url-guard';
-import type { CaseStudy, Collection, Bundle, ImportResult, ElectronDialogFilter } from '../shared/types';
+import type { CaseStudy, Collection, Bundle, ImportResult } from '../shared/types';
+
+export interface FileServiceOptions {
+  dataDir: string; // base data directory; exports are written to <dataDir>/exports
+}
 
 export class FileService {
+  private exportsDir: string;
+
+  constructor(options: FileServiceOptions) {
+    this.exportsDir = join(options.dataDir, 'exports');
+    if (!existsSync(this.exportsDir)) {
+      mkdirSync(this.exportsDir, { recursive: true });
+    }
+  }
+
   private getExportsPath(): string {
-    const userDataPath = app.getPath('userData');
-    return join(userDataPath, 'exports');
+    return this.exportsDir;
   }
 
   async exportCase(caseStudy: CaseStudy, format: string): Promise<string> {
@@ -799,23 +810,5 @@ ${caseStudy.answers}
       default:
         throw new Error(`Unsupported bulk export format: ${format}`);
     }
-  }
-
-  async showSaveDialog(defaultFilename: string, filters: ElectronDialogFilter[]): Promise<string | null> {
-    const result = await dialog.showSaveDialog({
-      defaultPath: defaultFilename,
-      filters,
-    });
-
-    return result.canceled ? null : result.filePath || null;
-  }
-
-  async showOpenDialog(filters: ElectronDialogFilter[]): Promise<string[] | null> {
-    const result = await dialog.showOpenDialog({
-      filters,
-      properties: ['openFile'],
-    });
-
-    return result.canceled ? null : result.filePaths;
   }
 }

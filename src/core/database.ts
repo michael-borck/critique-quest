@@ -1,22 +1,28 @@
 import { JsonDB, Config } from 'node-json-db';
 import { join } from 'path';
-import { app, safeStorage } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
+import type { SecretBox } from './secret-box';
 import type { CaseStudy, Collection, AIUsage, PracticeSession, CaseFilters, UserPreferences } from '../shared/types';
+
+export interface DatabaseOptions {
+  dataDir: string;       // base data directory; the JSON db lives in <dataDir>/database
+  secretBox: SecretBox;  // at-rest encryption for API keys
+}
 
 export class DatabaseManager {
   private db: JsonDB | null = null;
   private dbPath: string;
+  private secretBox: SecretBox;
 
-  constructor() {
-    const userDataPath = app.getPath('userData');
-    const dbDir = join(userDataPath, 'database');
-    
+  constructor(options: DatabaseOptions) {
+    const dbDir = join(options.dataDir, 'database');
+
     if (!existsSync(dbDir)) {
       mkdirSync(dbDir, { recursive: true });
     }
-    
+
     this.dbPath = join(dbDir, 'scenarios.json');
+    this.secretBox = options.secretBox;
   }
 
   async initialize(): Promise<void> {
@@ -24,20 +30,19 @@ export class DatabaseManager {
     await this.setupDefaults();
   }
 
-  // API keys are encrypted at rest with the OS keychain (Electron safeStorage)
-  // so they never sit in plaintext in the database file. Values are stored as
-  // "enc:<base64>"; legacy plaintext values are tolerated on read and upgraded
-  // on the next save. If encryption is unavailable (e.g. Linux without a
-  // keyring) keys fall back to plaintext.
+  // API keys are encrypted at rest via the injected SecretBox so they never sit
+  // in plaintext in the database file. Values are stored as "enc:<base64>";
+  // legacy plaintext values are tolerated on read and upgraded on the next save.
+  // If encryption is unavailable the keys fall back to plaintext.
   private readonly ENC_PREFIX = 'enc:';
 
   private encryptApiKeys(keys: Record<string, string>): Record<string, string> {
     const out: Record<string, string> = {};
-    const available = safeStorage.isEncryptionAvailable();
+    const available = this.secretBox.available();
     for (const [name, value] of Object.entries(keys || {})) {
       if (!value) { out[name] = ''; continue; }
       if (value.startsWith(this.ENC_PREFIX) || !available) { out[name] = value; continue; }
-      out[name] = this.ENC_PREFIX + safeStorage.encryptString(value).toString('base64');
+      out[name] = this.ENC_PREFIX + this.secretBox.encrypt(value);
     }
     return out;
   }
@@ -47,7 +52,7 @@ export class DatabaseManager {
     for (const [name, value] of Object.entries(keys || {})) {
       if (typeof value === 'string' && value.startsWith(this.ENC_PREFIX)) {
         try {
-          out[name] = safeStorage.decryptString(Buffer.from(value.slice(this.ENC_PREFIX.length), 'base64'));
+          out[name] = this.secretBox.decrypt(value.slice(this.ENC_PREFIX.length));
         } catch {
           out[name] = '';
         }

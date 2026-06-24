@@ -1,8 +1,7 @@
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
 import { join } from 'path';
-import { DatabaseManager } from './database';
-import { AIService } from './ai-service';
-import { FileService } from './file-service';
+import { DatabaseManager, AIService, FileService } from '../core';
+import { ElectronSecretBox } from './secret-box';
 
 class Application {
   private mainWindow: BrowserWindow | null = null;
@@ -11,9 +10,10 @@ class Application {
   private fileService: FileService;
 
   constructor() {
-    this.databaseManager = new DatabaseManager();
+    const dataDir = app.getPath('userData');
+    this.databaseManager = new DatabaseManager({ dataDir, secretBox: new ElectronSecretBox() });
     this.aiService = new AIService();
-    this.fileService = new FileService();
+    this.fileService = new FileService({ dataDir });
   }
 
   private createWindow(): void {
