@@ -6,4 +6,5 @@ export { AIService } from './ai-service';
 export { FileService } from './file-service';
 export type { FileServiceOptions } from './file-service';
 export type { SecretBox } from './secret-box';
+export type { Store, UsageStats } from './store';
 export { isPrivateAddress, assertPublicUrl } from './url-guard';

@@ -2,6 +2,8 @@ import { JsonDB, Config } from 'node-json-db';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import type { SecretBox } from './secret-box';
+import type { Store } from './store';
+import { encryptApiKeys, decryptApiKeys } from './api-keys';
 import type { CaseStudy, Collection, AIUsage, PracticeSession, CaseFilters, UserPreferences } from '../shared/types';
 
 export interface DatabaseOptions {
@@ -9,7 +11,7 @@ export interface DatabaseOptions {
   secretBox: SecretBox;  // at-rest encryption for API keys
 }
 
-export class DatabaseManager {
+export class DatabaseManager implements Store {
   private db: JsonDB | null = null;
   private dbPath: string;
   private secretBox: SecretBox;
@@ -30,37 +32,13 @@ export class DatabaseManager {
     await this.setupDefaults();
   }
 
-  // API keys are encrypted at rest via the injected SecretBox so they never sit
-  // in plaintext in the database file. Values are stored as "enc:<base64>";
-  // legacy plaintext values are tolerated on read and upgraded on the next save.
-  // If encryption is unavailable the keys fall back to plaintext.
-  private readonly ENC_PREFIX = 'enc:';
-
+  // API keys are encrypted at rest via the injected SecretBox (see ./api-keys).
   private encryptApiKeys(keys: Record<string, string>): Record<string, string> {
-    const out: Record<string, string> = {};
-    const available = this.secretBox.available();
-    for (const [name, value] of Object.entries(keys || {})) {
-      if (!value) { out[name] = ''; continue; }
-      if (value.startsWith(this.ENC_PREFIX) || !available) { out[name] = value; continue; }
-      out[name] = this.ENC_PREFIX + this.secretBox.encrypt(value);
-    }
-    return out;
+    return encryptApiKeys(keys, this.secretBox);
   }
 
   private decryptApiKeys(keys: Record<string, string>): Record<string, string> {
-    const out: Record<string, string> = {};
-    for (const [name, value] of Object.entries(keys || {})) {
-      if (typeof value === 'string' && value.startsWith(this.ENC_PREFIX)) {
-        try {
-          out[name] = this.secretBox.decrypt(value.slice(this.ENC_PREFIX.length));
-        } catch {
-          out[name] = '';
-        }
-      } else {
-        out[name] = value; // legacy plaintext
-      }
-    }
-    return out;
+    return decryptApiKeys(keys, this.secretBox);
   }
 
   private async setupDefaults(): Promise<void> {
