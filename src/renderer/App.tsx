@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -57,9 +57,14 @@ const App: React.FC = () => {
     loadCollections();
   }, [loadPreferences, loadCollections]); // Run only once on mount
 
-  // Set initial view based on user preferences
+  // Set the initial view from the user's default home page — but only ONCE.
+  // Otherwise any later preferences reload (e.g. SettingsView refreshing them on
+  // mount) would re-fire this effect and bounce the user back to the home page,
+  // making the Settings view unreachable.
+  const homePageApplied = useRef(false);
   useEffect(() => {
-    if (preferences?.default_home_page) {
+    if (!homePageApplied.current && preferences?.default_home_page) {
+      homePageApplied.current = true;
       setSelectedView(preferences.default_home_page);
     }
   }, [preferences, setSelectedView]);
