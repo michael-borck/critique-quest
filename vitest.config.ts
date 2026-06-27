@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
-// Standalone config so vitest does not try to load the app's Vite 8 (ESM-only)
-// build config, which its bundled Vite cannot require().
+// Standalone config. Kept separate from vite.config.ts so the test runner
+// (which bundles its own Vite) never has to load the app's ESM build config.
 export default defineConfig({
   test: {
     environment: 'node',

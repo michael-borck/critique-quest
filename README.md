@@ -8,7 +8,7 @@
 
 Desktop application for generating AI-powered educational case studies with support for OpenAI, Anthropic, Google Gemini, and local Ollama models.
 
-![Electron](https://img.shields.io/badge/Electron-26.2.1-47848F?logo=electron&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-42.4.1-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.2.2-3178C6?logo=typescript&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
@@ -47,7 +47,7 @@ With support for both cloud-based AI services and local models through Ollama, i
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20.19+ and npm (Vite 8 requires Node.js 20.19 or newer)
 - (Optional) [Ollama](https://ollama.ai) for local AI models
 
 ### Installation
@@ -150,17 +150,42 @@ See [OLLAMA_SETUP.md](OLLAMA_SETUP.md) for detailed instructions.
 ```
 critiquequest/
 ├── src/
-│   ├── main/           # Electron main process
-│   │   ├── database.ts # Local JSON database
-│   │   ├── ai-service.ts # AI provider integrations
-│   │   └── file-service.ts # Export functionality
-│   ├── renderer/       # React UI
-│   │   ├── components/ # UI components
-│   │   └── store/     # State management (Zustand)
-│   └── shared/        # Shared types and utilities
-├── dist/              # Build output
-└── release/          # Distribution packages
+│   ├── main/              # Electron main process (desktop only)
+│   │   ├── main.ts        # App lifecycle + secure ipcMain.handle handlers
+│   │   ├── preload.ts     # contextBridge → window.electronAPI
+│   │   └── secret-box.ts  # ElectronSecretBox (OS keychain via safeStorage)
+│   ├── renderer/          # React + MUI + Zustand UI (transport-agnostic)
+│   │   ├── main.tsx       # Picks preload (desktop) or httpApi (web)
+│   │   ├── api/httpApi.ts # HTTP transport for the web build
+│   │   ├── components/    # UI components
+│   │   ├── store/         # Zustand state
+│   │   └── contexts/      # Theme / settings
+│   ├── core/              # Transport-agnostic core shared by both builds
+│   │   ├── database.ts    # DatabaseManager — desktop Store (node-json-db)
+│   │   ├── ai-service.ts  # Multi-provider AI via a switch statement
+│   │   ├── file-service.ts# Export / import
+│   │   ├── store.ts       # Store interface (port)
+│   │   ├── secret-box.ts  # SecretBox interface (port)
+│   │   └── url-guard.ts   # assertPublicUrl SSRF guard
+│   ├── server/            # Self-hosted Fastify + SQLite multi-user server
+│   │   ├── server.ts      # Fastify app, auth routes, rate limiting
+│   │   ├── rpc.ts         # /api/rpc dispatch over RPC_METHODS
+│   │   ├── sqlite-store.ts# SqliteStore — server Store (per-user isolation)
+│   │   ├── db.ts          # better-sqlite3, WAL mode
+│   │   ├── auth.ts        # scrypt password hashing + session tokens
+│   │   ├── index.ts       # Server entrypoint
+│   │   └── secret-box.ts  # EnvSecretBox (AES-256-GCM)
+│   └── shared/            # types, validation, textAnalysis, html, conceptDatabase
+├── dist/                  # Build output
+└── release/               # Distribution packages
 ```
+
+CritiqueQuest is **one codebase, two deployments**: an Electron desktop app and an
+optional self-hosted multi-user web server. Both share the transport-agnostic
+`src/core` (data, AI, files, ports) and `src/shared` (types, validation). The
+desktop persists to a local JSON file (node-json-db); the server persists to
+SQLite (better-sqlite3, WAL) with per-user row isolation. To run the server,
+see **[SELF_HOSTING.md](SELF_HOSTING.md)**.
 
 ## 🛠️ Development
 
@@ -177,9 +202,9 @@ npm run typecheck    # TypeScript type checking
 ### Technology Stack
 
 - **Frontend**: React 18 + TypeScript + Material-UI
-- **Backend**: Electron + Node.js
+- **Backend**: Electron main process (desktop) / Fastify (self-hosted server)
 - **State Management**: Zustand
-- **Database**: JSON-based local storage
+- **Database**: JSON (node-json-db) on desktop; SQLite (better-sqlite3, WAL) on the self-hosted server
 - **Build Tools**: Vite + electron-builder
 
 ## 🤝 Contributing

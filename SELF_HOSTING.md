@@ -33,6 +33,8 @@ so it survives container restarts and upgrades.
 | `PORT` | `8787` | HTTP port. |
 | `DATA_DIR` | `/data` | Where the SQLite db and exports are written. |
 | `CRITIQUEQUEST_COOKIE_SECRET` | falls back to `CRITIQUEQUEST_SECRET` | Override the cookie signing key. |
+| `NODE_ENV` | — | `production` marks the session cookie `Secure` and makes `CRITIQUEQUEST_SECRET` required. |
+| `COOKIE_SECURE` | — | Force the session cookie `Secure` regardless of `NODE_ENV`. |
 
 ### System-wide AI keys (optional)
 
@@ -62,9 +64,16 @@ npm run build:web      # builds the web client to dist/web
 DATA_DIR=./data CRITIQUEQUEST_SECRET=$(openssl rand -hex 32) npm run start:server
 ```
 
-## Notes
+## Security
 
-- Put the server behind a TLS-terminating reverse proxy (Caddy, nginx, Traefik)
-  in production — sessions are cookie-based and should only travel over HTTPS.
-- API keys are encrypted at rest with `CRITIQUEQUEST_SECRET`. If you rotate the
-  secret, users will need to re-enter their keys.
+- **TLS is required in production.** Set `NODE_ENV=production` (or
+  `COOKIE_SECURE=true`) and terminate HTTPS at a reverse proxy (Caddy, nginx,
+  Traefik). The session cookie is marked `Secure`, so a browser refuses to send
+  it over plain HTTP — without TLS the app will appear unable to stay logged in.
+- **`CRITIQUEQUEST_SECRET` is mandatory in production** — the server refuses to
+  start without it. It encrypts stored API keys (AES-256-GCM) and signs session
+  cookies. Rotating it invalidates existing keys (users must re-enter them).
+- API keys are resolved server-side for generation/analysis and are not
+  re-sent on every request; only the Settings save and the "Test connection"
+  button transmit a key, so keep those behind HTTPS.
+- The server rate-limits login and registration attempts.

@@ -22,541 +22,407 @@ Comprehensive technical overview of CritiqueQuest's design and implementation.
 
 ## Architectural Overview
 
-CritiqueQuest is built as a modern desktop application using Electron, combining the flexibility of web technologies with native desktop capabilities. The architecture emphasizes educational requirements: offline functionality, data privacy, and reliable performance.
+CritiqueQuest is **one codebase with two deployments**: an Electron desktop
+application and an optional self-hosted multi-user web server. The two share a
+transport-agnostic core (`src/core`) and a set of shared types/utilities
+(`src/shared`); only the outermost layer — the process that hosts the core and
+the wire protocol that reaches it — differs.
+
+- **Desktop** ships as an Electron app. The main process hosts the core and
+  exposes it to the renderer over secure IPC. Data lives in a single JSON file
+  under the OS user-data directory (`node-json-db`).
+- **Self-hosted server** ships as a Fastify + SQLite multi-user web app. A
+  per-user `SqliteStore` isolates each account's data, and the same core is
+  reached over an HTTP RPC protocol. See [SELF_HOSTING.md](../../SELF_HOSTING.md).
+
+The renderer (React + MUI + Zustand) is identical across both deployments: it
+calls `window.electronAPI`, which is injected either by the Electron preload
+script (desktop) or by an HTTP adapter (web). No renderer code branches on the
+transport.
 
 ### High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CritiqueQuest Desktop App               │
-├─────────────────────────────────────────────────────────────┤
-│  Renderer Process (React + TypeScript)                     │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐ │
-│  │  UI Components  │ │  State Management│ │  Contexts     │ │
-│  │  - Material-UI  │ │  - Zustand Store │ │  - Theme      │ │
-│  │  - Custom Views │ │  - Persistence   │ │  - Settings   │ │
-│  └─────────────────┘ └─────────────────┘ └───────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  Inter-Process Communication (IPC)                         │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  Secure API Bridge - Preload Script                    │ │
-│  └─────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  Main Process (Node.js + TypeScript)                       │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐ │
-│  │  AI Service     │ │  Database       │ │  File Service │ │
-│  │  - Multi-provider│ │  - JSON storage │ │  - Export/Import│ │
-│  │  - Local/Cloud  │ │  - Collections  │ │  - Document gen│ │
-│  └─────────────────┘ └─────────────────┘ └───────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  External Integrations                                     │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐ │
-│  │  Cloud AI APIs  │ │  Local AI       │ │  File System  │ │
-│  │  - OpenAI       │ │  - Ollama       │ │  - User data  │ │
-│  │  - Google       │ │  - Local models │ │  - Exports    │ │
-│  │  - Anthropic    │ │                 │ │               │ │
-│  └─────────────────┘ └─────────────────┘ └───────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+                         ┌─────────────────────────────────┐
+                         │      src/core  (shared)         │
+                         │  DatabaseManager | AIService    │
+                         │  FileService | Store (port)     │
+                         │  SecretBox (port) | url-guard   │
+                         └────────────┬────────────────────┘
+                                      │ used by both
+                 ┌────────────────────┴────────────────────┐
+                 ▼                                         ▼
+   ┌──────────────────────────────┐         ┌──────────────────────────────┐
+   │     Desktop (Electron)       │         │   Self-hosted server         │
+   │  main process + IPC          │         │   Fastify + SQLite           │
+   │  DatabaseManager (JSON)      │         │   SqliteStore (per-user)     │
+   │  ElectronSecretBox (keychain)│         │   EnvSecretBox (AES-256-GCM) │
+   └──────────────┬───────────────┘         └──────────────┬───────────────┘
+                  │ window.electronAPI                     │ /api/rpc (HTTP)
+                  ▼                                        ▼
+   ┌──────────────────────────────────────────────────────────────────────┐
+   │            Renderer (React 18 + MUI + Zustand)                       │
+   │   identical UI for both transports; injects window.electronAPI       │
+   └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Technology Stack
 
-### Frontend Architecture (Renderer Process)
+| Layer | Technology |
+| --- | --- |
+| UI | React 18, TypeScript, Material-UI (MUI) 5, Zustand |
+| Desktop shell | Electron 42, hardened main process |
+| Web server | Fastify 5 (Node.js) |
+| Desktop storage | `node-json-db` (single JSON file in userData) |
+| Server storage | `better-sqlite3` (SQLite, WAL mode) |
+| AI providers | OpenAI (official SDK), Anthropic Claude (axios), Google Gemini (axios), Ollama (axios) |
+| Build | Vite 8 (renderer/web), `tsc` (main + server), electron-builder (packaging) |
 
-**React 18 + TypeScript**
-- **Component-based UI**: Modular, reusable educational interface components
-- **Type Safety**: Comprehensive TypeScript coverage for development reliability
-- **Modern React**: Hooks, functional components, and concurrent rendering
+Version ranges are declared in `package.json`; the values above reflect the
+caret ranges the project depends on.
 
-**Material-UI (MUI) Design System**
-- **Consistent Interface**: Professional, accessible educational application design
-- **Theme System**: Dark/light mode support with educational branding
-- **Responsive Components**: Adaptive layouts for different screen sizes
+## Transport-Agnostic Renderer
 
-**State Management (Zustand)**
-```typescript
-// Simplified store architecture
-interface AppStore {
-  // Case Study Management
-  cases: CaseStudy[];
-  currentCase: CaseStudy | null;
-  
-  // Collections & Organization
-  collections: Collection[];
-  selectedCollectionId: string | null;
-  
-  // User Interface State
-  selectedView: ViewType;
-  searchQuery: string;
-  filters: FilterState;
-  
-  // AI & Generation
-  isGenerating: boolean;
-  preferences: UserPreferences;
-  
-  // Practice & Progress
-  practiceSession: PracticeSession | null;
-  progressData: ProgressMetrics[];
-}
-```
-
-### Backend Architecture (Main Process)
-
-**Electron Main Process**
-- **System Integration**: Native desktop features and file system access
-- **Security Management**: Secure IPC and external service communication
-- **Process Coordination**: Renderer/main process communication orchestration
-
-**Service Layer Architecture**
+The renderer never knows whether it is talking to the desktop main process or a
+remote server. `src/renderer/main.tsx` detects the transport at startup:
 
 ```typescript
-// Core service interfaces
-interface AIService {
-  generateCaseStudy(input: GenerationInput): Promise<CaseStudy>;
-  suggestContext(domain: string, complexity: string): Promise<string>;
-  analyzePracticeSession(session: PracticeData): Promise<AnalysisResult>;
-}
-
-interface DatabaseService {
-  saveCaseStudy(caseStudy: CaseStudy): Promise<void>;
-  getCaseStudies(filters?: FilterOptions): Promise<CaseStudy[]>;
-  saveCollection(collection: Collection): Promise<void>;
-  savePracticeSession(session: PracticeSession): Promise<void>;
-}
-
-interface FileService {
-  exportCaseStudy(caseStudy: CaseStudy, format: ExportFormat): Promise<string>;
-  importCaseStudies(filePath: string): Promise<CaseStudy[]>;
-  generatePDF(content: string, options: PDFOptions): Promise<Buffer>;
+// Transport detection: the Electron preload injects window.electronAPI. When it
+// is absent we're running as the self-hosted web app, so install the HTTP
+// transport and gate the UI behind login.
+const isDesktop = !!window.electronAPI;
+if (!isDesktop) {
+  window.electronAPI = httpApi;
 }
 ```
 
-## Data Architecture
+The Electron preload (`src/main/preload.ts`) uses `contextBridge` to expose a
+set of typed methods that each invoke a named IPC channel. The HTTP adapter
+(`src/renderer/api/httpApi.ts`) exposes the **same** method surface, posting to
+`/api/rpc`. Because both conform to one shape, every component and Zustand store
+calls `window.electronAPI.<method>(…)` regardless of deployment.
 
-### Local Data Storage
+Views are imported directly in `App.tsx` (no `React.lazy` code-splitting).
 
-**JSON Database (node-json-db)**
-```
-User Data Directory/
-├── critiquequest/
-│   ├── database.json          # Main application data
-│   ├── preferences.json       # User settings and configuration
-│   ├── collections/          # Case study collections
-│   │   ├── collection-1.json
-│   │   └── collection-2.json
-│   ├── practice-sessions/    # Practice and progress data
-│   │   ├── session-1.json
-│   │   └── session-2.json
-│   └── exports/             # Generated export files
-│       ├── case-study-1.pdf
-│       └── collection-export.zip
-```
+## The Store Port
 
-**Data Models**
+Data access is defined once as a port in `src/core/store.ts` and implemented by
+two adapters, one per deployment. A `Store` is always scoped to a single user —
+the desktop has one implicit user; the server creates one per authenticated
+account.
 
 ```typescript
-// Core domain models
-interface CaseStudy {
-  id: number;
-  title: string;
-  domain: string;           // Category from framework
-  complexity: 'Beginner' | 'Intermediate' | 'Advanced';
-  scenario_type: string;
-  content: string;          // Main case study text
-  questions: string;        // Analysis questions
-  answers?: string;         // Model answers (optional)
-  word_count: number;
-  created_date: string;
-  modified_date: string;
-  tags: string[];
-  is_favorite: boolean;
-  usage_count: number;
-  concepts: string[];       // Applied frameworks/theories
-}
+// src/core/store.ts — the data-access contract shared by both backends.
+export interface Store {
+  initialize(): Promise<void>;
 
-interface Collection {
-  id: number;
-  name: string;
-  description: string;
-  color: string;
-  case_ids: number[];
-  created_date: string;
-  is_shared: boolean;
-}
+  getCases(filters?: CaseFilters): Promise<CaseStudy[]>;
+  saveCase(caseData: CaseStudy): Promise<number>;
+  deleteCase(id: number): Promise<void>;
+  searchCases(query: string): Promise<CaseStudy[]>;
 
-interface PracticeSession {
-  id: number;
-  case_id: number;
-  start_time: string;
-  end_time: string;
-  notes: string;
-  answers: string[];
-  analysis?: PracticeAnalysis;
-  completion_status: 'completed' | 'partial' | 'abandoned';
-}
+  getPreferences(): Promise<UserPreferences>;
+  setPreference(key: string, value: unknown): Promise<void>;
 
-interface GenerationInput {
-  domain: string;           // Selected category
-  complexity: string;
-  scenario_type: string;
-  context_setting: string;
-  key_concepts: string;     // Selected frameworks/theories
-  length_preference: string;
-  custom_prompt: string;
-  include_elements: ContentElements;
+  trackAIUsage(usage: AIUsage): Promise<void>;
+  getUsageStats(): Promise<UsageStats>;
+
+  savePracticeSession(session: PracticeSession & { analysis?: unknown }): Promise<number>;
+  getPracticeSessions(caseId: number): Promise<PracticeSession[]>;
+
+  getCollections(): Promise<Collection[]>;
+  saveCollection(collectionData: Collection): Promise<number>;
+  deleteCollection(id: number): Promise<void>;
+  addCaseToCollection(caseId: number, collectionId: number): Promise<void>;
+  removeCaseFromCollection(caseId: number, collectionId: number): Promise<void>;
+  getCasesByCollection(collectionId: number): Promise<CaseStudy[]>;
+  getCollectionsByCase(caseId: number): Promise<Collection[]>;
 }
 ```
 
-### Framework Database Structure
+- **`DatabaseManager`** (`src/core/database.ts`, desktop) implements `Store`
+  over `node-json-db`. Because node-json-db rewrites the entire file on every
+  write and has no locking, mutating operations are serialized through a queue
+  to prevent concurrent writes from clobbering one another.
+- **`SqliteStore`** (`src/server/sqlite-store.ts`, server) implements `Store`
+  over `better-sqlite3`. Every query is parameterized with a `user_id`, so each
+  account sees only its own rows. The database runs in WAL mode.
 
-**Hierarchical Knowledge Framework**
+There is no shared caching layer, no in-memory `Map` cache, and no abstract
+`DatabaseService` — only the `Store` port and its two adapters.
+
+## The SecretBox Port
+
+At-rest encryption of API keys is likewise defined as a port in
+`src/core/secret-box.ts` and implemented by two adapters:
+
 ```typescript
-// Two-level educational framework
-interface CategoryStructure {
-  [category: string]: {
-    disciplines: string[];
-    concepts: {
-      [discipline: string]: string[];
-    };
-  };
+// src/core/secret-box.ts
+export interface SecretBox {
+  available(): boolean;
+  encrypt(plaintext: string): string; // returns base64 ciphertext
+  decrypt(b64: string): string;        // takes base64 ciphertext, returns plaintext
 }
-
-// Example structure
-const frameworkStructure: CategoryStructure = {
-  'Business & Management': {
-    disciplines: ['Entrepreneurship', 'Marketing', 'Finance', 'Strategy & Leadership'],
-    concepts: {
-      'Entrepreneurship': ['Lean Startup Methodology', 'Business Model Canvas', 'Effectuation Theory'],
-      'Marketing': ['4Ps Marketing Mix', 'Customer Lifetime Value', 'Brand Equity Theory'],
-      // ... additional concepts
-    }
-  },
-  // ... additional categories
-};
 ```
 
-## AI Integration Architecture
+- **`ElectronSecretBox`** (`src/main/secret-box.ts`, desktop) delegates to
+  Electron's `safeStorage`, i.e. the OS keychain (Keychain on macOS,
+  DPAPI on Windows, libsecret on Linux).
+- **`EnvSecretBox`** (`src/server/secret-box.ts`, server) derives a 32-byte key
+  with `scrypt` from the `CRITIQUEQUEST_SECRET` environment variable and
+  encrypts with **AES-256-GCM** (random 12-byte IV + auth tag). If the secret is
+  unset, `available()` returns `false` and keys are stored as plaintext with a
+  startup warning.
 
-### Multi-Provider AI System
+`src/core/api-keys.ts` wraps stored values as `enc:<base64>`, tolerates legacy
+plaintext on read, and re-encrypts on the next save.
 
-**Provider Abstraction Layer**
+## AI Integration
+
+Provider selection is a **`switch` statement** in `src/core/ai-service.ts`, not
+an abstract class hierarchy and not a `Map` of provider instances. Each method
+(`generateCaseStudy`, `suggestContext`, `analyzePracticeSession`,
+`testConnection`, …) dispatches on the lowercase provider name:
+
 ```typescript
-// Unified AI interface
-abstract class AIProvider {
-  abstract generateCaseStudy(input: GenerationInput): Promise<string>;
-  abstract suggestContext(prompt: string): Promise<string>;
-  abstract analyzePractice(session: PracticeData): Promise<AnalysisResult>;
-}
-
-// Concrete implementations
-class OpenAIProvider extends AIProvider {
-  constructor(apiKey: string, model: string) { /* ... */ }
-}
-
-class OllamaProvider extends AIProvider {
-  constructor(endpoint: string, model: string) { /* ... */ }
-}
-
-class AnthropicProvider extends AIProvider {
-  constructor(apiKey: string, model: string) { /* ... */ }
+// src/core/ai-service.ts — one branch per provider, no class hierarchy.
+switch (provider.toLowerCase()) {
+  case 'ollama':      /* axios to the (local or remote) Ollama endpoint */
+  case 'openai':      /* official OpenAI SDK */
+  case 'anthropic':   /* axios to the Claude API */
+  case 'google':
+  case 'gemini':      /* axios to the Gemini API */
+  // ...
 }
 ```
 
-**AI Service Architecture**
-```typescript
-class AIService {
-  private providers: Map<string, AIProvider> = new Map();
-  
-  constructor() {
-    this.initializeProviders();
-  }
-  
-  async generateCaseStudy(
-    input: GenerationInput,
-    provider: string,
-    model: string
-  ): Promise<CaseStudy> {
-    const aiProvider = this.getProvider(provider);
-    const rawContent = await aiProvider.generateCaseStudy(input);
-    return this.parseAndValidate(rawContent, input);
-  }
-  
-  private parseAndValidate(content: string, input: GenerationInput): CaseStudy {
-    // Content parsing and educational validation logic
-  }
-}
-```
+- **OpenAI** uses the official SDK; **Anthropic Claude**, **Google Gemini**, and
+  **Ollama** use `axios`. Ollama runs locally (or at a remote address) for a
+  fully offline, privacy-first option.
+- On the **server**, the renderer never sends an API key on generation or
+  analysis calls. The server resolves the key from the user's encrypted
+  preferences (`resolveCreds` in `src/server/rpc.ts`) and falls back to process
+  environment variables when the store has none. This keeps keys off the wire on
+  every request.
+- All caller-controlled AI endpoints (the Ollama address or an
+  OpenAI-compatible base URL) pass through the SSRF guard before any request is
+  made (see [Security](#security-and-privacy)).
 
 ### Content Generation Pipeline
 
-**Case Study Generation Flow**
 ```
-User Input → Input Validation → Prompt Engineering → AI Generation → Content Parsing → Educational Validation → Database Storage
+Input → shared validation → prompt build → provider switch → response parse
+      → Store.saveCase → usage tracked
 ```
 
-**Prompt Engineering Strategy**
+Domain, complexity, and concept options are drawn from the shared concept
+database in `src/shared/conceptDatabase.ts`; input is validated with the shared
+schemas in `src/shared/validation.ts` before the AI service is called.
+
+## Transports in Detail
+
+### Electron IPC (desktop)
+
+The preload script exposes typed methods; the main process registers matching
+`ipcMain.handle` handlers. Channels are namespaced with a colon prefix —
+**not** kebab-case — e.g. `db:getCases`, `db:saveCase`, `ai:generateCase`,
+`ai:suggestContext`, `file:export`, `collection:getCollections`.
+
 ```typescript
-class PromptBuilder {
-  buildCaseStudyPrompt(input: GenerationInput): string {
-    return `
-      Create an educational case study with the following requirements:
-      
-      Domain: ${input.domain}
-      Complexity: ${input.complexity}
-      Scenario Type: ${input.scenario_type}
-      Context: ${input.context_setting}
-      Key Concepts: ${input.key_concepts}
-      
-      Include these elements:
-      ${this.formatIncludeElements(input.include_elements)}
-      
-      Educational Requirements:
-      - Clear learning objectives
-      - Realistic scenario details
-      - Multiple stakeholder perspectives
-      - Analysis questions that promote critical thinking
-      - Word count: ${this.getTargetWordCount(input.length_preference)}
-      
-      Format the response as structured educational content...
-    `;
-  }
-}
-```
-
-## Security and Privacy Architecture
-
-### Data Protection Strategies
-
-**Local-First Design**
-- All user data stored locally by default
-- No mandatory cloud services or external dependencies
-- User controls all data transmission and sharing
-
-**Secure IPC Communication**
-```typescript
-// Preload script security
+// src/main/preload.ts (excerpt)
 const electronAPI = {
-  // Exposed safe APIs only
-  generateCase: (input: GenerationInput) => ipcRenderer.invoke('generate-case', input),
-  saveCase: (caseStudy: CaseStudy) => ipcRenderer.invoke('save-case', caseStudy),
-  // No direct file system or process access
+  getCases: (filters?: CaseFilters) => ipcRenderer.invoke('db:getCases', filters),
+  saveCase: (caseData: CaseStudy) => ipcRenderer.invoke('db:saveCase', caseData),
+  generateCase: (input, provider?, model?, apiKey?, endpoint?) =>
+    ipcRenderer.invoke('ai:generateCase', input, provider, model, apiKey, endpoint),
+  // …file:, collection:, and the remaining ai: channels
+};
+```
+
+```typescript
+// src/main/main.ts (excerpt) — each channel has a matching handler.
+ipcMain.handle('db:saveCase', async (_, caseData) => this.databaseManager.saveCase(caseData));
+ipcMain.handle('ai:generateCase', async (_, input, provider, model, apiKey, endpoint) =>
+  this.aiService.generateCaseStudy(input, provider, model, apiKey, endpoint));
+```
+
+### HTTP RPC (web)
+
+The server exposes a single `/api/rpc` endpoint that dispatches on a method
+name to entries in the `RPC_METHODS` table (`src/server/rpc.ts`). Each handler
+receives a per-user context (`store`, `ai`, `files`) and mirrors an IPC channel
+one-for-one, so the web client presents the identical API the desktop client
+does:
+
+```typescript
+// src/server/rpc.ts
+export const RPC_METHODS: Record<string, Handler> = {
+  // Cases / preferences / usage / practice / collections → delegate to the store.
+  getCases: ({ store }, [filters]) => store.getCases(filters as never),
+  saveCase: ({ store }, [caseData]) => store.saveCase(caseData as never),
+  // …
+  // AI calls resolve the user's stored key server-side and guard the endpoint.
+  generateCase: async (ctx, [input, provider, model]) => {
+    const { apiKey, endpoint } = await resolveCreds(ctx, provider as string);
+    await guardEndpoint(endpoint);
+    return ctx.ai.generateCaseStudy(input as never, provider as string, model as string, apiKey, endpoint);
+  },
+  // …
 };
 
-// Main process validation
-ipcMain.handle('generate-case', async (event, input: GenerationInput) => {
-  // Input validation and sanitization
-  const validatedInput = validateGenerationInput(input);
-  return await aiService.generateCaseStudy(validatedInput);
-});
+export function makeContext(db, userId, secretBox, ai, files): RpcContext {
+  return { store: new SqliteStore(db, userId, secretBox), ai, files };
+}
 ```
 
-**AI Provider Security**
+File **export** is handled by a dedicated download route that streams the
+generated file back; import paths (`importCaseFromURL`, etc.) are RPC methods.
+
+## Security and Privacy
+
+### Hardened Electron Main Process
+
 ```typescript
-class SecureAIProvider {
-  private sanitizeInput(input: string): string {
-    // Remove potential injection patterns
-    // Validate educational content appropriateness
-    // Apply institutional content policies
-  }
-  
-  private validateResponse(response: string): boolean {
-    // Check for inappropriate content
-    // Verify educational value
-    // Ensure response completeness
+// src/main/main.ts
+webPreferences: {
+  nodeIntegration: false,
+  contextIsolation: true,
+  sandbox: true,
+  preload: join(__dirname, 'preload.js'),
+}
+```
+
+A production Content-Security-Policy is applied via response-header rewriting
+(`connect-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
+`frame-ancestors 'none'`). The renderer has no direct Node.js or file-system
+access — only the methods the preload script chooses to expose.
+
+### SSRF Guard
+
+`src/core/url-guard.ts` exposes `assertPublicUrl`, which rejects non-`http(s)`
+URLs and any host that resolves to a loopback, link-local, RFC1918, unique-local,
+or CGNAT address (including the `169.254.169.254` cloud-metadata address). It is
+applied to every caller-controlled AI endpoint and to URL imports on the server.
+Desktop IPC bypasses the server entirely, so a local Ollama instance on the
+desktop is unaffected.
+
+```typescript
+// src/server/rpc.ts — every caller-supplied endpoint is guarded before use.
+async function guardEndpoint(endpoint: unknown): Promise<void> {
+  if (typeof endpoint === 'string' && endpoint.trim() !== '') {
+    await assertPublicUrl(endpoint);
   }
 }
 ```
 
-### Privacy Configuration Options
+### Authentication and Session Management (server only)
 
-**Local AI Option (Ollama)**
-- Complete data privacy with local processing
-- No external network requests for AI functionality
-- Institutional control over AI models and behavior
+`src/server/auth.ts` implements password and session handling:
 
-**Cloud AI with Privacy Controls**
-- API key management and encryption
-- Request/response logging controls
-- Data retention policy compliance
+- **Passwords** are hashed with `scrypt` using a per-password random 16-byte
+  salt, then verified with `timingSafeEqual` (constant-time comparison).
+- **Sessions** are 32-byte random tokens stored server-side with a 30-day TTL.
+  The session cookie is `httpOnly`, `signed`, `sameSite=lax`, and `Secure` in
+  production; tampered or unsigned cookies are rejected.
+- **Rate limiting** is registered via `@fastify/rate-limit`: a global per-IP cap
+  (200 req/min), tightened to 5 req/min on `/api/auth/login` and
+  `/api/auth/register` to blunt brute-force attempts.
 
-## Performance Architecture
+### Per-User Data Isolation
 
-### Optimization Strategies
+On the server, a `SqliteStore` is constructed per request with the authenticated
+`userId`, and every query carries that `user_id`. One account cannot read or
+write another's rows.
 
-**Efficient State Management**
-```typescript
-// Optimized Zustand store with selective subscriptions
-const useCaseStudies = () => useAppStore(state => state.cases);
-const useCurrentCase = () => useAppStore(state => state.currentCase);
+### API-Key Encryption at Rest
 
-// Computed state for expensive operations
-const useFilteredCases = (filters: FilterState) => useMemo(() => {
-  return useAppStore.getState().cases.filter(applyFilters(filters));
-}, [filters, useAppStore(state => state.cases)]);
-```
+API keys are never stored in plaintext when encryption is available — they go
+through the `SecretBox` port (OS keychain on desktop, AES-256-GCM on server).
+See [The SecretBox Port](#the-secretbox-port).
 
-**Lazy Loading and Code Splitting**
-```typescript
-// Component-level code splitting
-const GenerationView = lazy(() => import('./components/GenerationView'));
-const PracticeView = lazy(() => import('./components/PracticeView'));
+## Data Model
 
-// Feature-based splitting for optional components
-const AdvancedAnalytics = lazy(() => import('./components/AdvancedAnalytics'));
-```
+The domain types live in `src/shared/types.ts` and are shared by both
+deployments. The core entities are `CaseStudy`, `Collection`,
+`PracticeSession`, `AIUsage`, and `UserPreferences`. Each carries stable fields
+such as `id`, `title`, `domain`, `complexity`, `scenario_type`, `content`,
+`questions`, `tags`, and timestamps; `CaseStudy` also tracks `usage_count` and
+applied `concepts`. The educational concept taxonomy backing generation lives in
+`src/shared/conceptDatabase.ts`.
 
-**Database Performance**
-```typescript
-// Efficient JSON database operations
-class DatabaseService {
-  private cache: Map<string, any> = new Map();
-  
-  async getCaseStudies(filters?: FilterOptions): Promise<CaseStudy[]> {
-    const cacheKey = JSON.stringify(filters);
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey);
-    }
-    
-    const results = await this.queryDatabase(filters);
-    this.cache.set(cacheKey, results);
-    return results;
-  }
-}
-```
+## Development and Build
 
-### Scalability Considerations
+### Scripts
 
-**Resource Management**
-- Efficient memory usage for large case study libraries
-- Background processing for AI generation
-- Optimized rendering for complex markdown content
-
-**Data Growth Handling**
-- Pagination for large case study collections
-- Incremental search and filtering
-- Archive/backup strategies for long-term usage
-
-## Development and Build Architecture
-
-### Build Pipeline
-
-**Development Workflow**
 ```bash
-# Concurrent development processes
-npm run dev:renderer  # Vite dev server with HMR
-npm run dev:main      # TypeScript compilation + Electron launch
+npm run dev          # Concurrent main (tsc + electron) and renderer (vite)
+npm run build        # Build main + renderer
+npm run build:server # Build the server (tsc -p src/server)
+npm run build:web    # WEB=1 vite build → dist/web (served by the server)
+npm run server       # build:server + build:web + start:server
+npm run dist         # electron-builder packaging
+npm run lint         # ESLint
+npm run typecheck    # tsc --noEmit
+npm run test         # vitest run
 ```
 
-**Production Build**
-```bash
-# Multi-step production build
-npm run build:renderer  # Optimized React bundle
-npm run build:main      # Compiled Node.js main process
-npm run dist           # Platform-specific distribution packages
-```
+### Vite Configuration
 
-**Build Configuration (Vite)**
+There is a single `vite.config.ts`. It switches output between the Electron
+renderer (`dist/renderer`, relative `base` for `file://`) and the web bundle
+(`dist/web`, absolute `base`) via the `WEB` env var. There is **no**
+`rollupOptions.manualChunks` configuration — chunking is left to Vite's
+defaults:
+
 ```typescript
 // vite.config.ts
+const isWeb = process.env.WEB === '1';
 export default defineConfig({
   plugins: [react()],
+  root: resolve(__dirname, 'src/renderer'),
+  base: isWeb ? '/' : './',
   build: {
-    outDir: 'dist/renderer',
-    rollupOptions: {
-      external: ['electron'],
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', '@mui/material'],
-          ai: ['openai', 'axios'],
-          utils: ['zustand', 'react-markdown']
-        }
-      }
-    }
-  }
+    outDir: resolve(__dirname, isWeb ? 'dist/web' : 'dist/renderer'),
+    emptyOutDir: true,
+  },
+  server: {
+    port: 3000,
+    proxy: isWeb ? { '/api': 'http://localhost:8787' } : undefined,
+  },
 });
 ```
 
-### Quality Assurance
+### Code Quality
 
-**TypeScript Configuration**
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
-  }
-}
-```
+- **ESLint** (flat config, `typescript-eslint`) for linting.
+- **Vitest** for tests, including `src/core/url-guard.test.ts`,
+  `src/server/*.test.ts`, and `src/shared/*.test.ts`.
 
-**Code Quality Tools**
-- **ESLint**: Comprehensive JavaScript/TypeScript linting
-- **Prettier**: Consistent code formatting
-- **Husky**: Git hooks for pre-commit quality checks
+The project does **not** use Prettier or Husky; there is no `.prettierrc` or
+`.husky` directory.
 
-## Deployment Architecture
+## Deployment
 
-### Distribution Strategy
-
-**Multi-Platform Support**
-```javascript
-// electron-builder configuration
-{
-  "appId": "com.critiquequest.app",
-  "directories": { "output": "release" },
-  "files": ["dist/**/*", "assets/**/*"],
-  "mac": { "category": "public.app-category.education" },
-  "win": { "target": "nsis" },
-  "linux": { "target": "AppImage" }
-}
-```
-
-**Update Mechanism**
-- Automatic update checking and notification
-- Incremental updates for performance
-- Rollback capability for stability
-
-### Educational Institution Deployment
-
-**Institutional Configuration**
-```typescript
-// Configurable institutional defaults
-interface InstitutionalConfig {
-  defaultAIProvider: 'ollama' | 'openai' | 'google';
-  allowedAIProviders: string[];
-  dataRetentionPolicy: number; // days
-  privacyMode: 'strict' | 'balanced' | 'open';
-  defaultCollections: Collection[];
-  institutionalBranding: BrandingConfig;
-}
-```
+- **Desktop**: `electron-builder` produces platform-specific installers from the
+  configuration in `package.json` (the `build` key), targeting macOS, Windows
+  (NSIS), and Linux (AppImage). Output lands in `release/`.
+- **Server**: a Docker image / `docker compose` stack runs the Fastify server
+  and serves the prebuilt `dist/web` bundle. `CRITIQUEQUEST_SECRET` drives
+  at-rest key encryption; an optional bundled Ollama service can be enabled.
+  Full instructions are in [SELF_HOSTING.md](../../SELF_HOSTING.md).
 
 ---
 
 ## Architectural Principles
 
-### Design Philosophy
-
-**🎓 Education-First Design**
-- Every architectural decision prioritizes educational value
-- Performance optimized for teaching and learning workflows
-- Privacy and security designed for educational environments
-
-**🔧 Maintainable Modularity**
-- Clear separation between UI, business logic, and external services
-- Pluggable AI provider architecture for future extensibility
-- Component-based design for easy feature addition
-
-**🔒 Privacy by Design**
-- Local-first data storage with optional cloud services
-- Minimal data transmission with user control
-- Transparent data handling and export capabilities
-
-**⚡ Performance for Education**
-- Responsive UI optimized for classroom use
-- Efficient resource usage for institutional deployment
-- Scalable architecture supporting growth
-
-This architecture enables CritiqueQuest to serve as a robust, privacy-conscious, and educationally effective platform for case study generation and analysis, supporting both individual learners and institutional deployments while maintaining the flexibility to evolve with changing educational needs.
+- **One core, two deployments.** Business logic lives once in `src/core` behind
+  small ports (`Store`, `SecretBox`); each deployment supplies adapters. Adding
+  a third transport would mean a new adapter pair, not a rewrite.
+- **Transport-agnostic UI.** The renderer depends only on `window.electronAPI`;
+  swapping IPC for HTTP is invisible to components and stores.
+- **Privacy by default.** Local Ollama keeps all AI traffic on-device; even with
+  cloud providers, keys are encrypted at rest and (on the server) never re-sent
+  per request.
+- **Defense in depth on the server.** Scrypt passwords, signed session cookies,
+  per-user SQL isolation, SSRF pre-flight checks, and rate-limited auth routes
+  layer together rather than relying on any single control.

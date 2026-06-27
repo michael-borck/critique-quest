@@ -6,6 +6,13 @@ import { countWords } from '../shared/textAnalysis';
 import { escapeHtml } from '../shared/html';
 import { assertPublicUrl } from './url-guard';
 import type { CaseStudy, Collection, Bundle, ImportResult } from '../shared/types';
+// Reduce a caller-supplied export filename to a single safe path segment:
+// strips path separators, parent-dir sequences, and shell/URL metacharacters so
+// the result can never escape the exports directory.
+function safeExportFilename(raw: string): string {
+  const slug = (raw || '').replace(/[^a-zA-Z0-9-_]+/g, '_').replace(/^_+|_+$/g, '');
+  return slug || 'export';
+}
 
 export interface FileServiceOptions {
   dataDir: string; // base data directory; exports are written to <dataDir>/exports
@@ -708,7 +715,7 @@ ${caseStudy.answers}
     };
 
     const jsonContent = JSON.stringify(bundle, null, 2);
-    const outputPath = join(this.getExportsPath(), `${filename}.json`);
+    const outputPath = join(this.getExportsPath(), `${safeExportFilename(filename)}.json`);
     
     writeFileSync(outputPath, jsonContent, 'utf8');
     return outputPath;

@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import rateLimit from '@fastify/rate-limit';
 import { existsSync, readFileSync } from 'fs';
 import { basename, extname } from 'path';
 import type { DB } from './db';
@@ -20,6 +21,7 @@ export interface ServerOptions {
   secretBox: SecretBox;
   cookieSecret: string;
   allowRegistration: boolean;
+  secureCookie: boolean;
 }
 
 export function buildServer(opts: ServerOptions): FastifyInstance {
@@ -28,6 +30,8 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   const files = new FileService({ dataDir: opts.dataDir });
 
   app.register(cookie, { secret: opts.cookieSecret });
+  // Global per-IP request cap; auth routes tighten this further below.
+  app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
 
   const currentUser = (req: FastifyRequest): User | null => {
     const raw = req.cookies[SESSION_COOKIE];
@@ -40,6 +44,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   const setSessionCookie = (reply: FastifyReply, token: string) => {
     reply.setCookie(SESSION_COOKIE, token, {
       httpOnly: true,
+      secure: opts.secureCookie,
       sameSite: 'lax',
       signed: true,
       path: '/',
@@ -48,9 +53,10 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   };
 
   // --- Auth routes ---
-  app.post('/api/auth/register', async (req, reply) => {
+  app.post('/api/auth/register', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { username, password } = (req.body ?? {}) as { username?: string; password?: string };
     if (!username || !password) return reply.code(400).send({ error: 'username and password required' });
+    if (password.length < 8) return reply.code(400).send({ error: 'Password must be at least 8 characters' });
     // Registration is open only if explicitly allowed, or for the very first
     // account (so a fresh instance can be bootstrapped).
     if (!opts.allowRegistration && countUsers(opts.db) > 0) {
@@ -65,7 +71,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
     }
   });
 
-  app.post('/api/auth/login', async (req, reply) => {
+  app.post('/api/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { username, password } = (req.body ?? {}) as { username?: string; password?: string };
     if (!username || !password) return reply.code(400).send({ error: 'username and password required' });
     const user = authenticate(opts.db, username, password);

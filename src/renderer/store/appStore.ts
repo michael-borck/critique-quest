@@ -21,6 +21,7 @@ interface AppState {
   
   // AI Status
   aiStatus: 'connected' | 'disconnected' | 'error';
+  loadError: string | null;
   
   // Preferences
   preferences: UserPreferences | null;
@@ -40,6 +41,7 @@ interface AppState {
   clearTagFilters: () => void;
   setAiStatus: (status: 'connected' | 'disconnected' | 'error') => void;
   setPreferences: (preferences: UserPreferences) => void;
+  clearLoadError: () => void;
   
   // Collection actions
   setCollections: (collections: Collection[]) => void;
@@ -80,6 +82,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   filters: {},
   aiStatus: 'disconnected',
   preferences: null,
+  loadError: null,
   
   // Synchronous actions
   setCases: (cases) => set({ cases }),
@@ -117,6 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   })),
   setAiStatus: (aiStatus) => set({ aiStatus }),
   setPreferences: (preferences) => set({ preferences }),
+  clearLoadError: () => set({ loadError: null }),
   
   // Collection synchronous actions
   setCollections: (collections) => set({ collections }),
@@ -136,9 +140,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const state = get();
       const cases = await window.electronAPI.getCases(state.filters);
-      set({ cases });
+      set({ cases, loadError: null });
     } catch (error) {
       console.error('Failed to load cases:', error);
+      set({ loadError: 'Failed to load your case library.' });
     }
   },
   
@@ -192,16 +197,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchCases: async (query) => {
     try {
       const cases = await window.electronAPI.searchCases(query);
-      set({ cases, searchQuery: query });
+      set({ cases, searchQuery: query, loadError: null });
     } catch (error) {
       console.error('Failed to search cases:', error);
+      set({ loadError: 'Search failed. Please try again.' });
     }
   },
   
   loadPreferences: async () => {
     try {
       const preferences = await window.electronAPI.getPreferences();
-      set({ preferences });
+      set({ preferences, loadError: null });
       
       // Check AI connection status
       if (preferences.default_ai_provider === 'ollama' || 
@@ -210,6 +216,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to load preferences:', error);
+      set({ loadError: 'Failed to load your settings.' });
     }
   },
 
@@ -221,9 +228,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadCollections: async () => {
     try {
       const collections = await window.electronAPI.getCollections();
-      set({ collections });
+      set({ collections, loadError: null });
     } catch (error) {
       console.error('Failed to load collections:', error);
+      set({ loadError: 'Failed to load your collections.' });
     }
   },
   

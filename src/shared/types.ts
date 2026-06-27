@@ -91,6 +91,7 @@ export interface UserPreferences {
   default_ai_model: string;
   default_ollama_model?: string;
   api_keys: Record<string, string>;
+  api_keys_configured?: Record<string, boolean>; // server-only: which providers have a stored key (values are never sent to the client)
   default_generation_settings: Partial<GenerationInput>;
   default_home_page: 'generation' | 'library' | 'practice' | 'documentation' | 'settings' | 'about' | 'legal';
   ollama_endpoint?: string;

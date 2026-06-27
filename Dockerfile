@@ -14,20 +14,35 @@ RUN npm ci
 COPY . .
 RUN npm run build:server && npm run build:web
 
-# --- Runtime stage ---
+# --- Production dependencies stage: install only runtime deps (incl. the
+# natively-built better-sqlite3), without the Electron/Vite/ESLint toolchain). ---
+FROM node:22-bookworm-slim AS deps
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# --- Runtime stage: lean image, no build tools, runs as a non-root user. ---
 FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8787 \
     DATA_DIR=/data
 
-# node_modules already has the compiled better-sqlite3 binary from the build stage.
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./package.json
+COPY package.json ./package.json
 
-RUN mkdir -p /data
+RUN groupadd -r app && useradd -r -g app -d /app app \
+    && mkdir -p /data \
+    && chown -R app:app /app /data
+USER app
+
 VOLUME /data
 EXPOSE 8787
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:'+(process.env.PORT||8787)+'/api/auth/me').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "dist/server/index.js"]

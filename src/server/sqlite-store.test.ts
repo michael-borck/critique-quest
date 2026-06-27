@@ -52,12 +52,23 @@ describe('SqliteStore', () => {
     expect(cases[0].tags).toEqual(['a', 'b']);
   });
 
-  it('encrypts api keys at rest but returns them decrypted', async () => {
-    await alice.setPreference('api_keys', { openai: 'sk-secret' });
+  it('never returns stored api key values (only presence) and merges partial saves', async () => {
+    await alice.setPreference('api_keys', { openai: 'sk-secret', anthropic: 'sk-ant' });
     const prefs = await alice.getPreferences();
-    expect(prefs.api_keys.openai).toBe('sk-secret');
+    // Values are never sent to the client.
+    expect(prefs.api_keys).toEqual({});
+    expect(prefs.api_keys_configured?.openai).toBe(true);
+    expect(prefs.api_keys_configured?.anthropic).toBe(true);
+    // The plaintext never reaches the stored row.
     const stored = db.prepare('SELECT data FROM preferences WHERE user_id = 1').get() as { data: string };
     expect(stored.data).not.toContain('sk-secret');
+    expect(stored.data).not.toContain('sk-ant');
+    // A partial save (only a newly-typed key) preserves the existing keys.
+    await alice.setPreference('api_keys', { google: 'sk-goog' });
+    const prefs2 = await alice.getPreferences();
+    expect(prefs2.api_keys_configured?.google).toBe(true);
+    expect(prefs2.api_keys_configured?.openai).toBe(true);
+    expect(prefs2.api_keys_configured?.anthropic).toBe(true);
   });
 
   it('scopes search and collections per user', async () => {

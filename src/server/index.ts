@@ -16,10 +16,18 @@ async function main(): Promise<void> {
   mkdirSync(dataDir, { recursive: true });
 
   const secret = process.env.CRITIQUEQUEST_SECRET;
+  const isProduction = process.env.NODE_ENV === 'production';
   if (!secret) {
+    if (isProduction) {
+      console.error('[critiquequest] CRITIQUEQUEST_SECRET is required in production (it encrypts stored API keys and signs session cookies). Refusing to start.');
+      process.exit(1);
+    }
     console.warn('[critiquequest] CRITIQUEQUEST_SECRET is not set — API keys will be stored unencrypted and sessions use a weak cookie secret. Set it in production.');
   }
   const cookieSecret = process.env.CRITIQUEQUEST_COOKIE_SECRET || secret || 'insecure-dev-cookie-secret';
+  // Mark the session cookie Secure in production. Terminate TLS at a reverse
+  // proxy (see SELF_HOSTING.md); over plain HTTP a Secure cookie is dropped.
+  const secureCookie = isProduction || process.env.COOKIE_SECURE === 'true';
 
   const db = openDatabase(join(dataDir, 'critiquequest.db'));
   const secretBox = new EnvSecretBox(secret);
@@ -34,6 +42,7 @@ async function main(): Promise<void> {
     secretBox,
     cookieSecret,
     allowRegistration: process.env.CRITIQUEQUEST_ALLOW_REGISTRATION === 'true',
+    secureCookie,
   });
 
   await app.listen({ port, host: '0.0.0.0' });

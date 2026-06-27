@@ -146,6 +146,12 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  // A provider counts as configured when a key is stored. The web server
+  // exposes only a presence flag (not the value), so "Test" must work even
+  // when the masked key field is empty.
+  const isProviderConfigured = (provider: string): boolean =>
+    !!preferences?.api_keys_configured?.[provider] || !!preferences?.api_keys?.[provider];
+
   const handleTestConnection = async (provider: string) => {
     try {
       let result = false;
@@ -153,12 +159,13 @@ export const SettingsView: React.FC = () => {
         result = await window.electronAPI.testConnection('ollama', ollamaConfig.bearer || undefined, ollamaConfig.endpoint);
       } else {
         const apiKey = apiKeys[provider as keyof typeof apiKeys];
-        if (!apiKey) {
+        if (!apiKey && !isProviderConfigured(provider)) {
           alert('Please enter an API key first');
           return;
         }
         const endpoint = provider === 'openai-compatible' ? (openaiBaseUrl || undefined) : undefined;
-        result = await window.electronAPI.testConnection(provider, apiKey, endpoint);
+        // Empty field + configured key → server resolves the stored key.
+        result = await window.electronAPI.testConnection(provider, apiKey || undefined, endpoint);
       }
       
       if (result) {
@@ -320,7 +327,7 @@ export const SettingsView: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={() => handleTestConnection('openai')}
-                  disabled={!apiKeys.openai}
+                  disabled={!apiKeys.openai && !isProviderConfigured('openai')}
                 >
                   Test Connection
                 </Button>
@@ -347,7 +354,7 @@ export const SettingsView: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={() => handleTestConnection('google')}
-                  disabled={!apiKeys.google}
+                  disabled={!apiKeys.google && !isProviderConfigured('google')}
                 >
                   Test Connection
                 </Button>
@@ -395,7 +402,7 @@ export const SettingsView: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={() => handleTestConnection('openai-compatible')}
-                  disabled={!apiKeys['openai-compatible'] || !openaiBaseUrl}
+                  disabled={(!apiKeys['openai-compatible'] && !isProviderConfigured('openai-compatible')) || !openaiBaseUrl}
                 >
                   Test Connection
                 </Button>
@@ -422,7 +429,7 @@ export const SettingsView: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={() => handleTestConnection('anthropic')}
-                  disabled={!apiKeys.anthropic}
+                  disabled={!apiKeys.anthropic && !isProviderConfigured('anthropic')}
                 >
                   Test Connection
                 </Button>

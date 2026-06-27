@@ -1,6 +1,6 @@
 import type { DB } from './db';
 import type { SecretBox } from '../core/secret-box';
-import { AIService, FileService } from '../core';
+import { AIService, FileService, assertPublicUrl } from '../core';
 import { SqliteStore } from './sqlite-store';
 
 // One handler per electronAPI method. Each receives the per-user store, the
@@ -13,6 +13,35 @@ export interface RpcContext {
 }
 
 type Handler = (ctx: RpcContext, args: unknown[]) => Promise<unknown> | unknown;
+// SSRF defence: a caller-supplied AI endpoint (Ollama address or
+// OpenAI-compatible base URL) must never reach a private/loopback address.
+// Only http(s) and never RFC1918/link-local/metadata. (Desktop IPC bypasses
+// the server entirely, so local Ollama there is unaffected.)
+async function guardEndpoint(endpoint: unknown): Promise<void> {
+  if (typeof endpoint === 'string' && endpoint.trim() !== '') {
+    await assertPublicUrl(endpoint);
+  }
+}
+
+// The web client never sends API keys for generation/analysis calls (httpApi
+// omits them); the server resolves them from its encrypted store so keys do
+// not traverse the wire on every request. Endpoints for ollama /
+// openai-compatible are resolved the same way. AIService still falls back to
+// system env keys when the store has none.
+async function resolveCreds(
+  ctx: RpcContext,
+  provider: string,
+): Promise<{ apiKey?: string; endpoint?: string }> {
+  const prefs = await ctx.store.getPreferences();
+  const p = (provider || '').toLowerCase();
+  if (p === 'ollama') {
+    return { apiKey: prefs.ollama_bearer || undefined, endpoint: prefs.ollama_endpoint || undefined };
+  }
+  if (p === 'openai-compatible') {
+    return { apiKey: prefs.api_keys?.['openai-compatible'] || undefined, endpoint: prefs.openai_base_url || undefined };
+  }
+  return { apiKey: prefs.api_keys?.[provider] || undefined, endpoint: undefined };
+}
 
 export const RPC_METHODS: Record<string, Handler> = {
   // Cases
@@ -43,16 +72,38 @@ export const RPC_METHODS: Record<string, Handler> = {
   getCollectionsByCase: ({ store }, [caseId]) => store.getCollectionsByCase(caseId as number),
 
   // AI
-  generateCase: ({ ai }, [input, provider, model, apiKey, endpoint]) =>
-    ai.generateCaseStudy(input as never, provider as string, model as string, apiKey as string, endpoint as string),
-  regenerateSection: ({ ai }, [section, context, provider, model, apiKey, endpoint]) =>
-    ai.regenerateSection(section as string, context, provider as string, model as string, apiKey as string, endpoint as string),
-  suggestContext: ({ ai }, [domain, complexity, scenarioType, provider, model, apiKey, endpoint]) =>
-    ai.suggestContext(domain as string, complexity as string, scenarioType as string, provider as string, model as string, apiKey as string, endpoint as string),
-  testConnection: ({ ai }, [provider, apiKey, endpoint]) => ai.testConnection(provider as string, apiKey as string, endpoint as string),
-  getOllamaModels: ({ ai }, [endpoint, bearer]) => ai.getOllamaModels(endpoint as string, bearer as string),
-  analyzePracticeSession: ({ ai }, [pc, provider, model, apiKey, endpoint]) =>
-    ai.analyzePracticeSession(pc as never, provider as string, model as string, apiKey as string, endpoint as string),
+  generateCase: async (ctx, [input, provider, model]) => {
+    const { apiKey, endpoint } = await resolveCreds(ctx, provider as string);
+    await guardEndpoint(endpoint);
+    return ctx.ai.generateCaseStudy(input as never, provider as string, model as string, apiKey, endpoint);
+  },
+  regenerateSection: async (ctx, [section, context, provider, model]) => {
+    const { apiKey, endpoint } = await resolveCreds(ctx, provider as string);
+    await guardEndpoint(endpoint);
+    return ctx.ai.regenerateSection(section as string, context, provider as string, model as string, apiKey, endpoint);
+  },
+  suggestContext: async (ctx, [domain, complexity, scenarioType, provider, model]) => {
+    const { apiKey, endpoint } = await resolveCreds(ctx, provider as string);
+    await guardEndpoint(endpoint);
+    return ctx.ai.suggestContext(domain as string, complexity as string, scenarioType as string, provider as string, model as string, apiKey, endpoint);
+  },
+  // testConnection prefers a caller-supplied key (testing unsaved form input);
+  // when none is supplied it resolves the stored key so a configured-but-masked
+  // provider can still be tested. Endpoint is SSRF-validated either way.
+  testConnection: async (ctx, [provider, apiKey, endpoint]) => {
+    await guardEndpoint(endpoint);
+    const key = (apiKey as string) || (await resolveCreds(ctx, provider as string)).apiKey;
+    return ctx.ai.testConnection(provider as string, key, endpoint as string);
+  },
+  getOllamaModels: async ({ ai }, [endpoint, bearer]) => {
+    await guardEndpoint(endpoint);
+    return ai.getOllamaModels(endpoint as string, bearer as string);
+  },
+  analyzePracticeSession: async (ctx, [pc, provider, model]) => {
+    const { apiKey, endpoint } = await resolveCreds(ctx, provider as string);
+    await guardEndpoint(endpoint);
+    return ctx.ai.analyzePracticeSession(pc as never, provider as string, model as string, apiKey, endpoint);
+  },
   // No-op on a multi-user server (endpoint is passed per call instead).
   setOllamaEndpoint: () => undefined,
 

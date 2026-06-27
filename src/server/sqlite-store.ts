@@ -46,7 +46,7 @@ export class SqliteStore implements Store {
     // Schema is created once when the database is opened (see ./db).
   }
 
-  private rowToCase(row: CaseRow): CaseStudy {
+  private rowToCase(row: CaseRow, collectionIds: number[]): CaseStudy {
     return {
       id: row.id,
       title: row.title,
@@ -62,30 +62,51 @@ export class SqliteStore implements Store {
       usage_count: row.usage_count,
       created_date: row.created_date,
       modified_date: row.modified_date,
-      collection_ids: this.collectionIdsForCase(row.id),
+      collection_ids: collectionIds,
     };
   }
 
-  private collectionIdsForCase(caseId: number): number[] {
-    return this.db
-      .prepare('SELECT collection_id FROM case_collections WHERE user_id = ? AND case_id = ?')
-      .all(this.userId, caseId)
-      .map((r) => (r as { collection_id: number }).collection_id);
+  // Maps rows to cases, resolving every case's collection memberships in a
+  // single query instead of one query per case (avoids N+1).
+  private rowsToCases(rows: CaseRow[]): CaseStudy[] {
+    const ids = rows.map((r) => r.id);
+    const byCase = new Map<number, number[]>();
+    if (ids.length) {
+      const membership = this.db
+        .prepare(
+          `SELECT case_id, collection_id FROM case_collections
+           WHERE user_id = ? AND case_id IN (${ids.map(() => '?').join(',')})`,
+        )
+        .all(this.userId, ...ids) as { case_id: number; collection_id: number }[];
+      for (const m of membership) {
+        const arr = byCase.get(m.case_id) ?? [];
+        arr.push(m.collection_id);
+        byCase.set(m.case_id, arr);
+      }
+    }
+    return rows.map((r) => this.rowToCase(r, byCase.get(r.id) ?? []));
   }
 
   async getCases(filters?: CaseFilters): Promise<CaseStudy[]> {
-    const rows = this.db
-      .prepare('SELECT * FROM cases WHERE user_id = ? ORDER BY modified_date DESC')
-      .all(this.userId) as CaseRow[];
-    let cases = rows.map((r) => this.rowToCase(r));
+    const where: string[] = ['user_id = ?'];
+    const params: unknown[] = [this.userId];
+    if (filters?.domain) {
+      where.push('domain = ?');
+      params.push(filters.domain);
+    }
+    if (filters?.complexity) {
+      where.push('complexity = ?');
+      params.push(filters.complexity);
+    }
+    if (filters?.favorite) where.push('is_favorite = 1');
 
-    if (filters) {
-      if (filters.domain) cases = cases.filter((c) => c.domain === filters.domain);
-      if (filters.complexity) cases = cases.filter((c) => c.complexity === filters.complexity);
-      if (filters.favorite) cases = cases.filter((c) => c.is_favorite);
-      if (filters.tags && filters.tags.length > 0) {
-        cases = cases.filter((c) => filters.tags!.some((t) => c.tags.includes(t)));
-      }
+    const rows = this.db
+      .prepare(`SELECT * FROM cases WHERE ${where.join(' AND ')} ORDER BY modified_date DESC`)
+      .all(...params) as CaseRow[];
+    let cases = this.rowsToCases(rows);
+    // Tags are stored as a JSON text column; filter them in memory.
+    if (filters?.tags && filters.tags.length > 0) {
+      cases = cases.filter((c) => filters.tags!.some((t) => c.tags.includes(t)));
     }
     return cases;
   }
@@ -147,26 +168,42 @@ export class SqliteStore implements Store {
          ) ORDER BY modified_date DESC`,
       )
       .all(this.userId, like, like, like) as CaseRow[];
-    return rows.map((r) => this.rowToCase(r));
+    return this.rowsToCases(rows);
   }
 
   async getPreferences(): Promise<UserPreferences> {
     const row = this.db.prepare('SELECT data FROM preferences WHERE user_id = ?').get(this.userId) as
       | { data: string }
       | undefined;
-    if (!row) return { ...DEFAULT_PREFERENCES };
+    if (!row) return { ...DEFAULT_PREFERENCES, api_keys: {}, api_keys_configured: {} };
     const prefs = { ...DEFAULT_PREFERENCES, ...JSON.parse(row.data) } as UserPreferences;
-    if (prefs.api_keys) prefs.api_keys = decryptApiKeys(prefs.api_keys, this.secretBox);
+    // Never send stored key VALUES to the client. Decrypt only to report which
+    // providers are configured; clients resolve keys server-side at use time.
+    const decrypted = prefs.api_keys ? decryptApiKeys(prefs.api_keys, this.secretBox) : {};
+    prefs.api_keys_configured = Object.fromEntries(
+      Object.entries(decrypted).map(([k, v]) => [k, !!v]),
+    );
+    prefs.api_keys = {};
     return prefs;
   }
 
   async setPreference(key: string, value: unknown): Promise<void> {
     const current = await this.getRawPreferences();
-    const storedValue =
-      key === 'api_keys' && value && typeof value === 'object'
-        ? encryptApiKeys(value as Record<string, string>, this.secretBox)
-        : value;
-    current[key] = storedValue;
+    if (key === 'api_keys' && value && typeof value === 'object') {
+      // Merge: the client submits only the keys it wants to set (empty/absent
+      // means "keep existing"), so a partial save never wipes stored keys.
+      const incoming = value as Record<string, string>;
+      const existing = current.api_keys
+        ? decryptApiKeys(current.api_keys as Record<string, string>, this.secretBox)
+        : {};
+      const merged: Record<string, string> = { ...existing };
+      for (const [k, v] of Object.entries(incoming)) {
+        if (v) merged[k] = v;
+      }
+      current.api_keys = encryptApiKeys(merged, this.secretBox);
+    } else {
+      current[key] = value;
+    }
     this.db
       .prepare('INSERT INTO preferences (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data')
       .run(this.userId, JSON.stringify(current));
@@ -299,7 +336,7 @@ export class SqliteStore implements Store {
          ORDER BY c.modified_date DESC`,
       )
       .all(this.userId, this.userId, collectionId) as CaseRow[];
-    return rows.map((r) => this.rowToCase(r));
+    return this.rowsToCases(rows);
   }
 
   async getCollectionsByCase(caseId: number): Promise<Collection[]> {

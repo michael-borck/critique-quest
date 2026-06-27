@@ -54,17 +54,17 @@ export const httpApi: typeof window.electronAPI = {
   getPreferences: () => rpc('getPreferences'),
   setPreference: (key, value) => rpc('setPreference', key, value),
 
-  generateCase: (input, provider, model, apiKey, endpoint) =>
-    rpc('generateCase', input, provider, model, apiKey, endpoint),
-  regenerateSection: (section, context, provider, model, apiKey, endpoint) =>
-    rpc('regenerateSection', section, context, provider, model, apiKey, endpoint),
-  suggestContext: (domain, complexity, scenarioType, provider, model, apiKey, endpoint) =>
-    rpc('suggestContext', domain, complexity, scenarioType, provider, model, apiKey, endpoint),
+  generateCase: (input, provider, model) =>
+    rpc('generateCase', input, provider, model),
+  regenerateSection: (section, context, provider, model) =>
+    rpc('regenerateSection', section, context, provider, model),
+  suggestContext: (domain, complexity, scenarioType, provider, model) =>
+    rpc('suggestContext', domain, complexity, scenarioType, provider, model),
   testConnection: (provider, apiKey, endpoint) => rpc('testConnection', provider, apiKey, endpoint),
   getOllamaModels: (endpoint, bearer) => rpc('getOllamaModels', endpoint, bearer),
   setOllamaEndpoint: (endpoint) => rpc('setOllamaEndpoint', endpoint),
-  analyzePracticeSession: (practiceContext, provider, model, apiKey, endpoint) =>
-    rpc('analyzePracticeSession', practiceContext, provider, model, apiKey, endpoint),
+  analyzePracticeSession: (practiceContext, provider, model) =>
+    rpc('analyzePracticeSession', practiceContext, provider, model),
 
   exportCase: (caseData, format) => downloadExport({ kind: 'case', caseData, format }),
   importCaseFromURL: (url) => rpc('importCaseFromURL', url),

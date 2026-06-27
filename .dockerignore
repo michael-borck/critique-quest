@@ -10,3 +10,8 @@ data
 *.exe
 *.AppImage
 .DS_Store
+.env
+.env.*
+coverage/
+.vscode/
+.idea/

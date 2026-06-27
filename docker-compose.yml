@@ -18,6 +18,11 @@ services:
     volumes:
       - cq-data:/data
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
 
   # Optional local AI. Enable with:  docker compose --profile ollama up -d
   # Then in Settings choose Ollama with endpoint http://ollama:11434

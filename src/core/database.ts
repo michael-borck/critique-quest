@@ -42,82 +42,44 @@ export class DatabaseManager implements Store {
   }
 
   private async setupDefaults(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    const db = this.db;
+    if (!db) throw new Error('Database not initialized');
+
+    // Initialize each top-level key if absent. Keys are independent: a failure
+    // on one must NOT rewrite the root and wipe existing data. (An earlier
+    // blanket catch did exactly that on any transient error, silently
+    // destroying a user's library.) Real failures now propagate to the caller.
+    const ensureArray = async (path: string) => {
+      try {
+        await db.getData(path);
+      } catch {
+        await db.push(path, [], false);
+      }
+    };
+
+    await ensureArray('/cases');
+    await ensureArray('/ai_usage');
+    await ensureArray('/practice_sessions');
+    await ensureArray('/collections');
+    await ensureArray('/case_collections');
 
     try {
-      // Initialize empty collections if they don't exist
-      try {
-        await this.db.getData('/cases');
-      } catch {
-        await this.db.push('/cases', [], false);
-      }
-
-      try {
-        await this.db.getData('/preferences');
-      } catch {
-        const defaults = {
-          theme: 'light',
-          default_ai_provider: 'openai',
-          default_ai_model: 'gpt-4',
-          api_keys: {},
-          default_generation_settings: {
-            domain: 'Business',
-            complexity: 'Intermediate',
-            scenario_type: 'Problem-solving',
-            length_preference: 'Medium'
-          },
-          default_home_page: 'generation',
-          enable_practice_ai_analysis: false,
-          enable_high_contrast: false
-        };
-        await this.db.push('/preferences', defaults, false);
-      }
-
-      try {
-        await this.db.getData('/ai_usage');
-      } catch {
-        await this.db.push('/ai_usage', [], false);
-      }
-
-      try {
-        await this.db.getData('/practice_sessions');
-      } catch {
-        await this.db.push('/practice_sessions', [], false);
-      }
-
-      try {
-        await this.db.getData('/collections');
-      } catch {
-        await this.db.push('/collections', [], false);
-      }
-
-      try {
-        await this.db.getData('/case_collections');
-      } catch {
-        await this.db.push('/case_collections', [], false);
-      }
-    } catch (error) {
-      console.error('Database setup error:', error);
-      // Initialize with empty database
-      await this.db.push('/', {
-        cases: [],
-        collections: [],
-        case_collections: [],
-        preferences: {
-          theme: 'light',
-          default_ai_provider: 'openai',
-          default_ai_model: 'gpt-4',
-          api_keys: {},
-          default_generation_settings: {
-            domain: 'Business',
-            complexity: 'Intermediate',
-            scenario_type: 'Problem-solving',
-            length_preference: 'Medium'
-          },
-          default_home_page: 'generation'
+      await db.getData('/preferences');
+    } catch {
+      await db.push('/preferences', {
+        theme: 'light',
+        default_ai_provider: 'openai',
+        default_ai_model: 'gpt-4',
+        api_keys: {},
+        default_generation_settings: {
+          domain: 'Business',
+          complexity: 'Intermediate',
+          scenario_type: 'Problem-solving',
+          length_preference: 'Medium'
         },
-        ai_usage: [],
-        practice_sessions: []
+        default_home_page: 'generation',
+        enable_practice_ai_analysis: false,
+        enable_high_contrast: false
       }, false);
     }
   }
