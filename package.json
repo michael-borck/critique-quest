@@ -36,15 +36,18 @@
     "email": "michael@borck.me"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.9.0",
     "@types/react": "^18.2.25",
     "@types/react-dom": "^18.2.11",
     "@vitejs/plugin-react": "^6.0.3",
     "@vitest/coverage-v8": "^4.1.9",
     "concurrently": "^8.2.2",
-    "electron": "^42.4.1",
+    "electron": "^42.5.0",
     "electron-builder": "^26.15.3",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",

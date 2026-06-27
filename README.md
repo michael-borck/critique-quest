@@ -47,7 +47,7 @@ With support for both cloud-based AI services and local models through Ollama, i
 
 ### Prerequisites
 
-- Node.js 20.19+ and npm (Vite 8 requires Node.js 20.19 or newer)
+- Node.js 22.12+ and npm (Node 24 recommended; Electron dev and Vite 8 both require ≥22.12)
 - (Optional) [Ollama](https://ollama.ai) for local AI models
 
 ### Installation
