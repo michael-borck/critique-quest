@@ -89,6 +89,7 @@ jobs:
             release/*.AppImage
             release/*.deb
             release/*.zip
+            release/*.blockmap
             release/*.yml
             release/*.yaml
             release/*latest*.yml
@@ -150,4 +151,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Upload all artifacts to the release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec gh release upload "${{ github.ref_name }}" {} \;
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" -o -name "*.yml" -o -name "*.blockmap" \) -exec gh release upload "${{ github.ref_name }}" {} \;

@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import { join } from 'path';
 import { DatabaseManager, AIService, FileService } from '../core';
 import { ElectronSecretBox } from './secret-box';
+import { autoUpdater } from 'electron-updater';
 
 class Application {
   private mainWindow: BrowserWindow | null = null;
@@ -242,11 +243,36 @@ class Application {
     this.setupContentSecurityPolicy();
     this.setupIpcHandlers();
   }
+  // In-app auto-update via electron-updater. Only packaged apps self-update
+  // (dev builds have no app-update.yml / no published release to check). Checks
+  // on launch, downloads silently, and prompts to install once ready.
+  private setupAutoUpdater(): void {
+    if (!app.isPackaged) return;
+    autoUpdater.autoDownload = true;
+    autoUpdater.on('update-downloaded', async () => {
+      const opts = {
+        type: 'info' as const,
+        title: 'Update ready',
+        message: 'A new version of CritiqueQuest has been downloaded.',
+        detail: 'Restart now to install the update?',
+        buttons: ['Restart', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+      };
+      const { response } = this.mainWindow
+        ? await dialog.showMessageBox(this.mainWindow, opts)
+        : await dialog.showMessageBox(opts);
+      if (response === 0) setImmediate(() => autoUpdater.quitAndInstall());
+    });
+    autoUpdater.on('error', (err) => console.error('[autoUpdater]', err));
+    autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater]', err));
+  }
 
   public async start(): Promise<void> {
     await app.whenReady();
     await this.initialize();
     this.createWindow();
+    this.setupAutoUpdater();
 
     app.on('window-all-closed', () => {
       if (process.platform !== 'darwin') {

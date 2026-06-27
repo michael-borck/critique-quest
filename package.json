@@ -69,6 +69,7 @@
     "@mui/material": "^5.14.11",
     "axios": "^1.12.0",
     "better-sqlite3": "^12.11.1",
+    "electron-updater": "^6.8.9",
     "fastify": "^5.8.5",
     "html-to-text": "^9.0.5",
     "jspdf": "^4.2.1",
@@ -91,6 +92,11 @@
       "dist/**/*",
       "assets/**/*"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "michael-borck",
+      "repo": "critique-quest"
+    },
     "mac": {
       "category": "public.app-category.education",
       "target": [
